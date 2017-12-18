@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -211,6 +211,7 @@ namespace MfxHwVideoProcessing
     {
         mfxU32 refCount;
         std::vector<ExtSurface> surfaceListForRelease;
+        std::vector<mfxU32> subTasks;
     };
 
     struct DdiTask : public State
@@ -266,12 +267,12 @@ namespace MfxHwVideoProcessing
         bool   m_bWeave;
         bool   m_bPassThroughEnable;
         bool   m_bRefFrameEnable;
+        bool   m_multiBlt;// this flag defines mode of composition for D3D11: 1 - run few hw calls per frame (Blt), 0 - run one hw call (Blt)
 
         ExtendedConfig m_extConfig;
         mfxU16 m_IOPattern;
         mfxU16 m_surfCount[2];
     };
-
 
     class ResMngr
     {
@@ -299,6 +300,8 @@ namespace MfxHwVideoProcessing
 
             m_fwdRefCountRequired  = 0;
             m_bkwdRefCountRequired = 0;
+
+            m_multiBlt = 0;
 
             m_core = NULL;
         }
@@ -333,6 +336,10 @@ namespace MfxHwVideoProcessing
 
         mfxStatus CompleteTask(DdiTask *pTask);
         std::vector<State> m_surf[2];
+
+        mfxU32 GetSubTask(DdiTask *pTask);
+        mfxStatus DeleteSubTask(DdiTask *pTask, mfxU32 subtaskIdx);
+        bool IsMultiBlt();
 
     private:
 
@@ -390,6 +397,8 @@ namespace MfxHwVideoProcessing
 
         mfxU32 m_fwdRefCountRequired;
         mfxU32 m_bkwdRefCountRequired;
+
+        bool m_multiBlt;// this flag defines mode of composition for D3D11: 1 - run few hw calls per frame (Blt), 0 - run one hw call (Blt)
 
         VideoCORE* m_core;
     };
@@ -642,6 +651,9 @@ namespace MfxHwVideoProcessing
 
         mfxStatus CompleteTask(DdiTask* pTask);
 
+        mfxU32 GetSubTask(DdiTask *pTask);
+        mfxStatus DeleteSubTask(DdiTask *pTask, mfxU32 subtaskIdx);
+
     private:
 
         mfxStatus DoCpuFRC_AndUpdatePTS(
@@ -853,5 +865,4 @@ namespace MfxHwVideoProcessing
 
 
 #endif // __MFX_VPP_HW_H
-//#endif // MFX_VA
 #endif // MFX_ENABLE_VPP

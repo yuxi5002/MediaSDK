@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -367,19 +367,15 @@ namespace UMC
                     ptr->luma_scale = pContext->m_picLayerHeader->LUMSCALE;
                     ptr->luma_shift = pContext->m_picLayerHeader->LUMSHIFT;
 
-#ifndef MFX_VAAPI_UPSTREAM
                     //bottom field
                     ptr->luma_scale2 = pContext->m_picLayerHeader->LUMSCALE1;
                     ptr->luma_shift2 = pContext->m_picLayerHeader->LUMSHIFT1;
-#endif
                 }
                 else if (VC1_INTCOMP_BOTTOM_FIELD == pContext->m_picLayerHeader->INTCOMFIELD)
                 {
-#ifndef MFX_VAAPI_UPSTREAM
                     // bottom field
                     ptr->luma_scale2 = pContext->m_picLayerHeader->LUMSCALE1;
                     ptr->luma_shift2 = pContext->m_picLayerHeader->LUMSHIFT1;
-#endif
                     // top field not compensated
                     ptr->luma_scale = 32;
                 }
@@ -388,19 +384,15 @@ namespace UMC
                     // top field
                     ptr->luma_scale = pContext->m_picLayerHeader->LUMSCALE;
                     ptr->luma_shift = pContext->m_picLayerHeader->LUMSHIFT;
-#ifndef MFX_VAAPI_UPSTREAM
                     // bottom field not compensated
                     ptr->luma_scale2 = 32;
-#endif
                 }
             }
         }
         else
         {
             ptr->luma_scale = 32;
-#ifndef MFX_VAAPI_UPSTREAM
             ptr->luma_scale2 = 32;
-#endif
         }
 
         /*picture_fields.bits.picture_type*/

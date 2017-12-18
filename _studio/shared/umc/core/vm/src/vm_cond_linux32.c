@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -122,6 +122,39 @@ vm_status vm_cond_timedwait(vm_cond *cond, vm_mutex *mutex, uint32_t msec)
         gettimeofday(&tval, NULL);
         // NOTE: micro_sec _should_ be unsigned long long, not uint32_t to avoid overflow
         micro_sec = 1000 * msec + tval.tv_usec;
+        tspec.tv_sec = tval.tv_sec + (uint32_t)(micro_sec / 1000000);
+        tspec.tv_nsec = (uint32_t)(micro_sec % 1000000) * 1000;
+
+        res = pthread_cond_timedwait(&cond->handle, &mutex->handle, &tspec);
+        if (0 == res)
+            umc_res = VM_OK;
+        else if (ETIMEDOUT == res)
+            umc_res = VM_TIMEOUT;
+        else
+            umc_res = VM_OPERATION_FAILED;
+    }
+    return umc_res;
+} /* vm_status vm_cond_timedwait(vm_cond *cond, vm_mutex *mutex, uint32_t msec) */
+
+/* Sleeps  in microseconds on the specified condition variable and releases the specified critical section as an atomic operation */
+vm_status vm_cond_timed_uwait(vm_cond *cond, vm_mutex *mutex, vm_tick usec)
+{
+    vm_status umc_res = VM_NOT_INITIALIZED;
+
+    /* check error(s) */
+    if (NULL == cond || NULL == mutex)
+        return VM_NULL_PTR;
+
+    if (cond->is_valid && mutex->is_valid)
+    {
+        struct timeval tval;
+        struct timespec tspec;
+        int32_t res;
+        unsigned long long micro_sec;
+
+        gettimeofday(&tval, NULL);
+        // NOTE: micro_sec _should_ be unsigned long long, not uint32_t to avoid overflow
+        micro_sec = usec + tval.tv_usec;
         tspec.tv_sec = tval.tv_sec + (uint32_t)(micro_sec / 1000000);
         tspec.tv_nsec = (uint32_t)(micro_sec % 1000000) * 1000;
 

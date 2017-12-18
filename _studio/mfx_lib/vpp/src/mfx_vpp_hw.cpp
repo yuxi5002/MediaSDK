@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -491,6 +491,8 @@ mfxStatus ResMngr::Init(
 
     m_fieldWeaving = config.m_bWeave;
 
+    m_multiBlt = config.m_multiBlt;
+
     m_core                 = core;
 
     return MFX_ERR_NONE;
@@ -602,7 +604,14 @@ mfxStatus ResMngr::DoAdvGfx(
 
 } // mfxStatus ResMngr::DoAdvGfx(...)
 
-
+/// This function requests for new decoded frame if needed in
+/// 30i->60p mode
+/*
+  \param[in] input input surface
+  \param[in] output output surface
+  \param [out] intSts :MFX_ERR_NONE will request for decoded frame,
+                       MFX_ERR_MORE_SURFACE will call VPP on previously decoded surface
+ */
 mfxStatus ResMngr::DoMode30i60p(
     mfxFrameSurface1 *input,
     mfxFrameSurface1 *output,
@@ -633,21 +642,21 @@ mfxStatus ResMngr::DoMode30i60p(
             {
                 *intSts = MFX_ERR_NONE;
                 m_outputIndexCountPerCycle = 3; //was 3
-                m_bkwdRefCount = 0;
+                m_bkwdRefCount = 0; // First frame does not have reference
             }
             else
             {
                 m_bOutputReady = true;
                 *intSts = MFX_ERR_MORE_SURFACE;
                 m_outputIndexCountPerCycle = 2;
-                if(true == m_bRefFrameEnable)
+
+                if (true == m_bRefFrameEnable) // ADI
                 {
                     // need one backward reference to enable motion adaptive ADI
                     m_bkwdRefCount = 1;
                 }
                 else
                 {
-                    // no reference frame, use ADI with spatial info
                     m_bkwdRefCount = 0;
                 }
             }
@@ -738,6 +747,8 @@ mfxStatus ResMngr::ReleaseSubResource(bool bAll)
                 mfxStatus sts = m_core->DecreaseReference( &(extSrf.pSurf->Data) );
                 MFX_CHECK_STS(sts);
             }
+            m_subTaskQueue[i]->subTasks.shrink_to_fit();
+            m_subTaskQueue[i]->subTasks.clear();
             taskToRemove.push_back( m_subTaskQueue[i] );
         }
     }
@@ -777,6 +788,7 @@ ReleaseResource* ResMngr::CreateSubResource(void)
     ReleaseResource* subRes = new ReleaseResource;
     subRes->refCount = 0;
     subRes->surfaceListForRelease.clear();
+    subRes->subTasks.clear();
 
     subRes->refCount = m_outputIndexCountPerCycle;
 
@@ -801,6 +813,7 @@ ReleaseResource* ResMngr::CreateSubResourceForMode30i60p(void)
     ReleaseResource* subRes = new ReleaseResource;
     subRes->refCount = 0;
     subRes->surfaceListForRelease.clear();
+    subRes->subTasks.clear();
 
 
     subRes->refCount = m_outputIndexCountPerCycle;
@@ -930,7 +943,6 @@ mfxStatus ResMngr::FillTask(
     mfxFrameSurface1 *pOutSurface)
 {
     pInSurface;
-
     mfxU32 refIndx = 0;
 
     // bkwd
@@ -1001,6 +1013,10 @@ mfxStatus ResMngr::FillTask(
             }
         }
         pTask->m_refList.push_back(fwdSurf);
+        if (m_pSubResource && refIndx && m_multiBlt)
+        {
+            m_pSubResource->subTasks.push_back(pTask->taskIndex + refIndx);
+        }
         actualNumber++;
     }
 
@@ -1043,6 +1059,32 @@ mfxStatus ResMngr::CompleteTask(DdiTask *pTask)
 
 } // mfxStatus ResMngr::CompleteTask(DdiTask *pTask)
 
+mfxU32 ResMngr::GetSubTask(DdiTask *pTask)
+{
+    if (pTask && pTask->pSubResource && pTask->pSubResource->subTasks.size())
+        return pTask->pSubResource->subTasks[0];
+    else
+        return NO_INDEX;
+}
+
+mfxStatus ResMngr::DeleteSubTask(DdiTask *pTask, mfxU32 subtaskIdx)
+{
+    if (pTask && pTask->pSubResource)
+    {
+        std::vector<mfxU32>::iterator sub_it = find(pTask->pSubResource->subTasks.begin(), pTask->pSubResource->subTasks.end(), subtaskIdx);
+        if (sub_it != pTask->pSubResource->subTasks.end())
+        {
+            pTask->pSubResource->subTasks.erase(sub_it);
+            return MFX_ERR_NONE;
+        }
+    }
+    return MFX_ERR_NOT_FOUND;
+}
+
+bool ResMngr::IsMultiBlt()
+{
+    return m_multiBlt;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////
 // TaskManager
@@ -1310,6 +1352,8 @@ mfxStatus TaskManager::FillTask(
     }
 
     pTask->taskIndex    = m_taskIndex++;
+    if ((m_taskIndex + pTask->fwdRefCount) >= NO_INDEX)
+        m_taskIndex = 1;
 
     pTask->input.timeStamp     = CURRENT_TIME_STAMP + m_actualNumber * FRAME_INTERVAL;
     pTask->input.endTimeStamp  = CURRENT_TIME_STAMP + (m_actualNumber + 1) * FRAME_INTERVAL;
@@ -1333,6 +1377,9 @@ mfxStatus TaskManager::FillTask(
             pTask,
             pInSurface,
             pOutSurface);
+        if ((COMPOSITE & m_extMode) && m_resMngr.IsMultiBlt())
+            m_taskIndex += pTask->fwdRefCount;
+
     }
     else // simple mode
     {
@@ -1409,6 +1456,8 @@ void TaskManager::UpdatePTS_Mode30i60p(
 
 } // void TaskManager::UpdatePTS_Mode30i60p(...)
 
+mfxU32 TaskManager::GetSubTask(DdiTask *pTask) { return m_resMngr.GetSubTask(pTask); }
+mfxStatus TaskManager::DeleteSubTask(DdiTask *pTask, mfxU32 subtaskIdx) { return m_resMngr.DeleteSubTask(pTask, subtaskIdx); }
 
 void TaskManager::UpdatePTS_SimpleMode(
     mfxFrameSurface1 *input,
@@ -1638,6 +1687,12 @@ mfxStatus VideoVPPHW::GetVideoParams(mfxVideoParam *par) const
             MFX_CHECK_NULL_PTR1(bufSc);
             bufSc->ScalingMode = m_executeParams.scalingMode;
         }
+        else if (MFX_EXTBUFF_VPP_COLOR_CONVERSION == bufferId)
+        {
+            mfxExtColorConversion *bufSc = reinterpret_cast<mfxExtColorConversion *>(par->ExtParam[i]);
+            MFX_CHECK_NULL_PTR1(bufSc);
+            bufSc->ChromaSiting = m_executeParams.chromaSiting;
+        }
         else if (MFX_EXTBUFF_VPP_MIRRORING == bufferId)
         {
             mfxExtVPPMirroring *bufMir = reinterpret_cast<mfxExtVPPMirroring *>(par->ExtParam[i]);
@@ -1769,6 +1824,10 @@ mfxStatus  VideoVPPHW::Init(
     caps = m_ddi->GetCaps();
 
     sts = ValidateParams(&m_params, &caps, m_pCore);
+    if( MFX_ERR_UNSUPPORTED == sts )
+    {
+        sts = MFX_ERR_INVALID_VIDEO_PARAM;
+    }
     if( MFX_WRN_FILTER_SKIPPED == sts )
     {
         bIsFilterSkipped = true;
@@ -2825,6 +2884,8 @@ mfxStatus VideoVPPHW::SyncTaskSubmission(DdiTask* pTask)
     std::vector<ExtSurface> surfQueue(numSamples);
 
     mfxU32 indx = 0;
+    mfxU32 deinterlaceAlgorithm = 0;
+
     // bkwdFrames
     for(i = 0; i < pTask->bkwdRefCount; i++)
     {
@@ -3039,17 +3100,84 @@ mfxStatus VideoVPPHW::SyncTaskSubmission(DdiTask* pTask)
 
     m_executeParams.iTargetInterlacingMode = DEINTERLACE_ENABLE;
 
-    if( !(m_executeParams.targetSurface.frameInfo.PicStruct & (MFX_PICSTRUCT_PROGRESSIVE)) )
+    if( !(m_executeParams.targetSurface.frameInfo.PicStruct & (MFX_PICSTRUCT_PROGRESSIVE)))
     {
         m_executeParams.iTargetInterlacingMode = DEINTERLACE_DISABLE;
         m_executeParams.iDeinterlacingAlgorithm = 0;
     }
 
+    // Check for progressive frames in interlace streams
+    deinterlaceAlgorithm = m_executeParams.iDeinterlacingAlgorithm;
+
+    static mfxU32 num_progressive = 0;
+    mfxU32 currFramePicStruct = m_executeSurf[pTask->bkwdRefCount].frameInfo.PicStruct;
+    mfxU32 refFramePicStruct = m_executeSurf[0].frameInfo.PicStruct;
+    bool isFirstField = true;
+    bool isCurrentProgressive = false;
+    bool isPreviousProgressive = false;
+
+
+    // check for progressive frames marked as progressive or pict_struct=5,6,7,8 in H.264
+    if ((currFramePicStruct == MFX_PICSTRUCT_PROGRESSIVE) ||
+        (currFramePicStruct & MFX_PICSTRUCT_FIELD_REPEATED) ||
+        (currFramePicStruct & MFX_PICSTRUCT_FRAME_DOUBLING) ||
+        (currFramePicStruct & MFX_PICSTRUCT_FRAME_TRIPLING))
+    {
+        isCurrentProgressive = true;
+    }
+
+    if ((refFramePicStruct == MFX_PICSTRUCT_PROGRESSIVE) ||
+        (refFramePicStruct & MFX_PICSTRUCT_FIELD_REPEATED) ||
+        (refFramePicStruct & MFX_PICSTRUCT_FRAME_DOUBLING) ||
+        (refFramePicStruct & MFX_PICSTRUCT_FRAME_TRIPLING))
+    {
+        isPreviousProgressive = true;
+    }
+
+    // Process progressive frame
+    if (isCurrentProgressive)
+    {
+        m_executeParams.iDeinterlacingAlgorithm = 0;
+    }
+
+    // Need special handling for progressive frame in 30i->60p ADI mode
+    if ((pTask->bkwdRefCount == 1) && m_executeParams.bDeinterlace30i60p) {
+        if ((m_frame_num % 2) == 0)
+            isFirstField = false; // 30i->60p ADI second field correspond to even output frame except for first and last
+
+        // Process progressive current frame
+        if (isCurrentProgressive)
+        {
+            // First field comes from interlace reference
+            if ((!isPreviousProgressive) && isFirstField)
+                m_executeParams.iDeinterlacingAlgorithm = deinterlaceAlgorithm;
+            else
+                m_executeParams.iDeinterlacingAlgorithm = 0; // Disable DI for current frame
+        }
+
+        // Disable DI when previous frame is progressive and current frame is interlace
+        if (isPreviousProgressive && (!isCurrentProgressive) && isFirstField)
+            m_executeParams.iDeinterlacingAlgorithm = 0; // Disable DI for first output frame
+    }
+
+
     MfxHwVideoProcessing::mfxExecuteParams  execParams = m_executeParams;
     sts = MergeRuntimeParams(pTask, &execParams);
     MFX_CHECK_STS(sts);
-
-    sts = (*m_ddi)->Execute(&execParams);
+    if (execParams.bComposite &&
+        (MFX_HW_D3D11 == m_pCore->GetVAType() && execParams.refCount > MAX_STREAMS_PER_TILE))
+    {
+        mfxU32 NumExecute = execParams.refCount;
+        for (mfxU32 execIdx = 0; execIdx < NumExecute; execIdx++)
+        {
+            execParams.execIdx = execIdx;
+            sts = (*m_ddi)->Execute(&execParams);
+            if (sts != MFX_ERR_NONE)
+                break;
+        }
+    }
+    else
+        sts = (*m_ddi)->Execute(&execParams);
     if (sts != MFX_ERR_NONE)
     {
         pTask->SetFree(true);
@@ -3071,6 +3199,9 @@ mfxStatus VideoVPPHW::SyncTaskSubmission(DdiTask* pTask)
     sts = PostWorkInputSurface(numSamples);
     MFX_CHECK_STS(sts);
 
+    // restore value for m_executeParams.iDeinterlacingAlgorithm
+    m_executeParams.iDeinterlacingAlgorithm = deinterlaceAlgorithm;
+    m_frame_num++; // used to derive first or second field
     return MFX_ERR_NONE;
 
 } // mfxStatus VideoVPPHW::SyncTaskSubmission(DdiTask* pTask)
@@ -3107,8 +3238,21 @@ mfxStatus VideoVPPHW::QueryTaskRoutine(void *pState, void *pParam, mfxU32 thread
 
     mfxU32 currentTaskIdx = pTask->taskIndex;
 
-    if (! pTask->skipQueryStatus && ! pHwVpp->m_executeParams.mirroring) {
-        sts = (*pHwVpp->m_ddi)->QueryTaskStatus(currentTaskIdx);
+    if (!pTask->skipQueryStatus && !pHwVpp->m_executeParams.mirroring) {
+        mfxU32 currSubTaskIdx = pHwVpp->m_taskMngr.GetSubTask(pTask);
+        while (currSubTaskIdx != NO_INDEX)
+        {
+            sts = (*pHwVpp->m_ddi)->QueryTaskStatus(currSubTaskIdx);
+            if (sts == MFX_TASK_DONE || sts == MFX_ERR_NONE)
+            {
+                pHwVpp->m_taskMngr.DeleteSubTask(pTask, currSubTaskIdx);
+                currSubTaskIdx = pHwVpp->m_taskMngr.GetSubTask(pTask);
+            }
+            else
+                currSubTaskIdx = NO_INDEX;
+        }
+        if (sts == MFX_TASK_DONE || sts == MFX_ERR_NONE)
+            sts = (*pHwVpp->m_ddi)->QueryTaskStatus(currentTaskIdx);
         if (sts == MFX_ERR_DEVICE_FAILED ||
             sts == MFX_ERR_GPU_HANG)
         {
@@ -3315,7 +3459,8 @@ mfxStatus ValidateParams(mfxVideoParam *par, mfxVppCaps *caps, VideoCORE *core, 
         sts = GetWorstSts(sts, MFX_WRN_PARTIAL_ACCELERATION);
 
     /* 6. BitDepthLuma and BitDepthChroma should be configured for p010 format */
-    if (MFX_FOURCC_P010 == par->vpp.In.FourCC)
+    if (MFX_FOURCC_P010 == par->vpp.In.FourCC
+        )
     {
         if (0 == par->vpp.In.BitDepthLuma)
         {
@@ -3329,7 +3474,8 @@ mfxStatus ValidateParams(mfxVideoParam *par, mfxVppCaps *caps, VideoCORE *core, 
         }
     }
 
-    if (MFX_FOURCC_P010 == par->vpp.Out.FourCC)
+    if (MFX_FOURCC_P010 == par->vpp.Out.FourCC
+        )
     {
         if (0 == par->vpp.Out.BitDepthLuma)
         {
@@ -3342,6 +3488,7 @@ mfxStatus ValidateParams(mfxVideoParam *par, mfxVppCaps *caps, VideoCORE *core, 
             sts = GetWorstSts(sts, MFX_WRN_INCOMPATIBLE_VIDEO_PARAM);
         }
     }
+
 
     /* 8. Check unsupported filters on RGB */
     if( par->vpp.In.FourCC == MFX_FOURCC_RGB4)
@@ -3484,16 +3631,19 @@ template <class T> void add_unique_fragments(const cRect<T> &r, std::vector< cRe
 
     while(!stack.empty()) {
         cRect<T> &cr = stack.back();
-        const cRect<T> &cf = fragments[cr.m_frag_lvl];
 
         if(cr.m_frag_lvl == frag_cnt) {
             stack.pop_back();
             fragments.push_back(cr);
-        } else if(cf.overlap(cr)) {
-            stack.pop_back();
-            fragment(cr, cf, stack);
         } else {
-            cr.m_frag_lvl++;
+            const cRect<T> &cf = fragments[cr.m_frag_lvl];
+            if (cf.overlap(cr)) {
+                stack.pop_back();
+                fragment(cr, cf, stack);
+            }
+            else {
+                cr.m_frag_lvl++;
+            }
         }
     }
 }
@@ -3514,6 +3664,35 @@ template <class T> T get_total_area(std::vector< cRect<T> > &rects) {
 
     return area;
 }
+
+inline
+mfxU64 make_back_color_yuv(mfxU16 bit_depth, mfxU16 Y, mfxU16 U, mfxU16 V)
+{
+    VM_ASSERT(bit_depth);
+
+    mfxU64 const shift = bit_depth - 8;
+    return
+        ((mfxU64)                                ((255 << shift) - 1) << 48) |
+        ((mfxU64)VPP_RANGE_CLIP(Y, (16 << shift), (235 << shift))     << 32) |
+        ((mfxU64)VPP_RANGE_CLIP(U, (16 << shift), (240 << shift))     << 16) |
+        ((mfxU64)VPP_RANGE_CLIP(V, (16 << shift), (240 << shift))     <<  0)
+        ;
+};
+
+inline
+mfxU64 make_def_back_color_yuv(mfxU16 bit_depth)
+{
+    assert(bit_depth);
+
+    mfxU64 const shift = bit_depth - 8;
+    mfxU64 const min_val = 16 << shift, max_val = 256 << shift;
+    return
+        ((max_val - 1ULL) << 48) |
+        ( min_val      << 32) |
+        ( max_val / 2  << 16) |
+        ( max_val / 2  <<  0)
+        ;
+};
 
 //---------------------------------------------------------
 // Do internal configuration
@@ -3541,26 +3720,22 @@ mfxStatus ConfigureExecuteParams(
     config.m_surfCount[VPP_IN]  = 1;
     config.m_surfCount[VPP_OUT] = 1;
 
+    mfxU64 def_back_color = 0xffff000000000000;
     if (videoParam.vpp.Out.FourCC == MFX_FOURCC_NV12 ||
         videoParam.vpp.Out.FourCC == MFX_FOURCC_YV12 ||
         videoParam.vpp.Out.FourCC == MFX_FOURCC_NV16 ||
         videoParam.vpp.Out.FourCC == MFX_FOURCC_YUY2 ||
         videoParam.vpp.Out.FourCC == MFX_FOURCC_AYUV )
     {
-        executeParams.iBackgroundColor = 0x00ff001000800080; // black in 8-bit YUV interpretation
+        def_back_color = make_def_back_color_yuv(8);
     }
     else if(videoParam.vpp.Out.FourCC == MFX_FOURCC_P010 ||
             videoParam.vpp.Out.FourCC == MFX_FOURCC_P210)
     {
-        // black in 10-bit YUV interpretation
-        // 0x(2^10-1)(64)(512)(512)
-        // 0x03FF004002000200
-        executeParams.iBackgroundColor = 0x03FF004002000200;
+        def_back_color = make_def_back_color_yuv(10);
     }
-    else
-    {
-        executeParams.iBackgroundColor = 0xffff000000000000; // black in RGB interpretation
-    }
+
+    executeParams.iBackgroundColor = def_back_color;
 
     //-----------------------------------------------------
     for (mfxU32 j = 0; j < pipelineList.size(); j += 1)
@@ -3765,6 +3940,43 @@ mfxStatus ConfigureExecuteParams(
                         {
                             mfxExtVPPScaling *extScaling = (mfxExtVPPScaling*) videoParam.ExtParam[i];
                             executeParams.scalingMode = extScaling->ScalingMode;
+                        }
+                    }
+                }
+                else
+                {
+                    bIsFilterSkipped = true;
+                }
+
+                break;
+            }
+            case MFX_EXTBUFF_VPP_COLOR_CONVERSION:
+            {
+                if (caps.uChromaSiting )
+                {
+                    for (mfxU32 i = 0; i < videoParam.NumExtParam; i++)
+                    {
+                        if (videoParam.ExtParam[i]->BufferId == MFX_EXTBUFF_VPP_COLOR_CONVERSION)
+                        {
+                            mfxExtColorConversion *extCC = (mfxExtColorConversion*)videoParam.ExtParam[i];
+
+                            switch (extCC->ChromaSiting)
+                            {
+                            case MFX_CHROMA_SITING_HORIZONTAL_LEFT | MFX_CHROMA_SITING_VERTICAL_TOP:
+                            case MFX_CHROMA_SITING_HORIZONTAL_LEFT | MFX_CHROMA_SITING_VERTICAL_CENTER:
+                            case MFX_CHROMA_SITING_HORIZONTAL_LEFT | MFX_CHROMA_SITING_VERTICAL_BOTTOM:
+                            case MFX_CHROMA_SITING_HORIZONTAL_CENTER | MFX_CHROMA_SITING_VERTICAL_CENTER:
+                            case MFX_CHROMA_SITING_HORIZONTAL_CENTER | MFX_CHROMA_SITING_VERTICAL_TOP:
+                            case MFX_CHROMA_SITING_HORIZONTAL_CENTER | MFX_CHROMA_SITING_VERTICAL_BOTTOM:
+                            case MFX_CHROMA_SITING_UNKNOWN:
+                                // valid values
+                                break;
+                            default:
+                                //bad combination of flags
+                                return MFX_ERR_INVALID_VIDEO_PARAM;
+                            }
+
+                            executeParams.chromaSiting = extCC->ChromaSiting;
                         }
                     }
                 }
@@ -4004,18 +4216,12 @@ mfxStatus ConfigureExecuteParams(
                             targetFourCC == MFX_FOURCC_YUY2 ||
                             targetFourCC == MFX_FOURCC_AYUV)
                         {
-                            executeParams.iBackgroundColor  = ((mfxU64)0xff << 48)|
-                               ((mfxU64)VPP_RANGE_CLIP(extComp->Y, 16, 235) << 32)|
-                               ((mfxU64)VPP_RANGE_CLIP(extComp->U, 16, 240) << 16)|
-                               ((mfxU64)VPP_RANGE_CLIP(extComp->V, 16, 240) <<  0);
+                            executeParams.iBackgroundColor = make_back_color_yuv(8, extComp->Y, extComp->U, extComp->V);
                         }
                         if (targetFourCC == MFX_FOURCC_P010 ||
                             targetFourCC == MFX_FOURCC_P210)
                         {
-                            executeParams.iBackgroundColor  =         ((mfxU64)0x03ff << 48)|
-                               ((mfxU64)VPP_RANGE_CLIP(extComp->Y, 64 , 940 ) << 32)|
-                               ((mfxU64)VPP_RANGE_CLIP(extComp->U, 64 , 960 ) << 16)|
-                               ((mfxU64)VPP_RANGE_CLIP(extComp->V, 64 , 960 ) <<  0);
+                            executeParams.iBackgroundColor = make_back_color_yuv(10, extComp->Y, extComp->U, extComp->V);
                         }
                         if (targetFourCC == MFX_FOURCC_RGB4 ||
                             targetFourCC == MFX_FOURCC_BGR4)
@@ -4036,6 +4242,8 @@ mfxStatus ConfigureExecuteParams(
                 config.m_extConfig.customRateData.fwdRefCount  = StreamCount-1; // count only secondary streams
                 config.m_extConfig.customRateData.inputFramesOrFieldPerCycle= StreamCount;
                 config.m_extConfig.customRateData.outputIndexCountPerCycle  = 1;
+
+                config.m_multiBlt = false; // not applicable for Linux
 
                 executeParams.bComposite = true;
                 executeParams.bBackgroundRequired = true; /* by default background required */
@@ -4283,26 +4491,7 @@ mfxStatus ConfigureExecuteParams(
                     executeParams.bComposite = false;
                     executeParams.dstRects.clear();
 
-                    if (videoParam.vpp.Out.FourCC == MFX_FOURCC_NV12 ||
-                        videoParam.vpp.Out.FourCC == MFX_FOURCC_YV12 ||
-                        videoParam.vpp.Out.FourCC == MFX_FOURCC_NV16 ||
-                        videoParam.vpp.Out.FourCC == MFX_FOURCC_YUY2 ||
-                        videoParam.vpp.Out.FourCC == MFX_FOURCC_AYUV )
-                    {
-                        executeParams.iBackgroundColor = 0x00ff001000800080; // black in 8-bit YUV interpretation 0x(2^8-1)(16)(128)(128)
-                    }
-                    else if (videoParam.vpp.Out.FourCC == MFX_FOURCC_P010 ||
-                             videoParam.vpp.Out.FourCC == MFX_FOURCC_P210)
-                    {
-                        // black in 10-bit YUV interpretation
-                        // 0x(2^10-1)(64)(512)(512)
-                        // 0x03FF004002000200
-                        executeParams.iBackgroundColor = 0x03FF004002000200;
-                    }
-                    else
-                    {
-                        executeParams.iBackgroundColor = 0xffff000000000000; // black in RGB interpretation
-                    }
+                    executeParams.iBackgroundColor = def_back_color;
                 }
                 else if (MFX_EXTBUFF_VPP_FIELD_PROCESSING == bufferId)
                 {

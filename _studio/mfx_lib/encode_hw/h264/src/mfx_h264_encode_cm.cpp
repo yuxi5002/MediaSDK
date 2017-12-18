@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,11 +32,9 @@
 #include "mfx_h264_encode_cm_defs.h"
 #include "mfx_h264_encode_cm.h"
 #include "mfx_h264_encode_hw_utils.h"
-#include "genx_hsw_simple_me_isa.h"
 #include "genx_bdw_simple_me_isa.h"
 #include "genx_skl_simple_me_isa.h"
 #include "genx_skl_histogram_isa.h"
-#include "genx_hsw_histogram_isa.h"
 
 namespace MfxHwH264EncodeHW
 {
@@ -811,11 +809,6 @@ void CmContext::Setup(
 
     switch (core->GetHWType())
     {
-    case MFX_HW_HSW:
-    case MFX_HW_HSW_ULT:
-        m_program = ReadProgram(m_device, genx_hsw_simple_me, SizeOf(genx_hsw_simple_me));
-        m_programHist = ReadProgram(m_device, genx_hsw_histogram, SizeOf(genx_hsw_histogram));
-        break;
     case MFX_HW_BDW:
     case MFX_HW_CHT:
         m_program = ReadProgram(m_device, genx_bdw_simple_me, SizeOf(genx_bdw_simple_me));

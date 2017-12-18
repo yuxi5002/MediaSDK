@@ -1,15 +1,15 @@
 # Copyright (c) 2017 Intel Corporation
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -58,6 +58,8 @@ if( Linux OR Darwin )
     endif()
   endif()
 
+  # Potential source of confusion here. Environment $MFX_VERSION translates to product name (strings libmfxhw64.so | grep mediasdk),
+  # but macro definition MFX_VERSION should contain API version i.e. 1025 for API 1.25
   if( NOT DEFINED ENV{MFX_VERSION} )
     set( version 0.0.000.0000 )
   else()
@@ -74,15 +76,17 @@ if( Linux OR Darwin )
       )
     string( SUBSTRING ${version} 0 1 ver )
 
-    set( git_commit "" )
-    git_describe( git_commit )
-
-    add_definitions( -DMFX_FILE_VERSION=\"${ver}${cur_date}${git_commit}\")
+    add_definitions( -DMFX_FILE_VERSION=\"${ver}${cur_date}\")
     add_definitions( -DMFX_PRODUCT_VERSION=\"${version}\" )
     add_definitions( -DMSDK_BUILD=\"$ENV{BUILD_NUMBER}\")
   endif()
 
-  set(no_warnings "-Wno-deprecated-declarations -Wno-unknown-pragmas -Wno-unused")
+  if (CMAKE_C_COMPILER MATCHES icc)
+    set(no_warnings "-Wno-deprecated -Wno-unknown-pragmas -Wno-unused")
+  else()
+    set(no_warnings "-Wno-deprecated-declarations -Wno-unknown-pragmas -Wno-unused")
+  endif()
+
   set(CMAKE_C_FLAGS "-pipe -fPIC")
   set(CMAKE_CXX_FLAGS "-pipe -fPIC")
   append("-fPIE -pie" CMAKE_EXEC_LINKER_FLAGS)

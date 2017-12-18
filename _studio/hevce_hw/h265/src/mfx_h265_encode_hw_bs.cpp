@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "mfx_config.h"
+#include "mfx_common.h"
 #if defined(MFX_ENABLE_H265_VIDEO_ENCODE)
 
 #include "mfx_h265_encode_hw_bs.h"
@@ -2237,56 +2237,100 @@ void PackPTPayload(BitstreamWriter& rbsp, MfxVideoParam const & par, Task const 
 {
     PicTimingSEI pt = {};
 
-    switch (task.m_surf->Info.PicStruct)
+    if (par.isField())
     {
-    case mfxU16(MFX_PICSTRUCT_PROGRESSIVE):
-        pt.pic_struct       = 0;
-        pt.source_scan_type = 1;
-        break;
-    case mfxU16(MFX_PICSTRUCT_FIELD_TFF):
-        pt.pic_struct       = 3;
-        pt.source_scan_type = 0;
-        break;
-    case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_TFF):
-        pt.pic_struct       = 3;
-        pt.source_scan_type = 1;
-        break;
-    case mfxU16(MFX_PICSTRUCT_FIELD_BFF):
-        pt.pic_struct       = 4;
-        pt.source_scan_type = 0;
-        break;
-    case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_BFF):
-        pt.pic_struct       = 4;
-        pt.source_scan_type = 1;
-        break;
-    case mfxU16(MFX_PICSTRUCT_FIELD_TFF | MFX_PICSTRUCT_FIELD_REPEATED):
-        pt.pic_struct       = 5;
-        pt.source_scan_type = 0;
-        break;
-    case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_TFF | MFX_PICSTRUCT_FIELD_REPEATED):
-        pt.pic_struct       = 5;
-        pt.source_scan_type = 1;
-        break;
-    case mfxU16(MFX_PICSTRUCT_FIELD_BFF | MFX_PICSTRUCT_FIELD_REPEATED):
-        pt.pic_struct       = 6;
-        pt.source_scan_type = 0;
-        break;
-    case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_BFF | MFX_PICSTRUCT_FIELD_REPEATED):
-        pt.pic_struct       = 6;
-        pt.source_scan_type = 1;
-        break;
-    case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FRAME_DOUBLING):
-        pt.pic_struct       = 7;
-        pt.source_scan_type = 1;
-        break;
-    case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FRAME_TRIPLING):
-        pt.pic_struct       = 8;
-        pt.source_scan_type = 1;
-        break;
-    default:
-        pt.pic_struct       = 0;
-        pt.source_scan_type = 2;
-        break;
+        switch (task.m_surf->Info.PicStruct)
+        {
+        case mfxU16(MFX_PICSTRUCT_FIELD_TOP):
+            pt.pic_struct = 1;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_BOTTOM):
+            pt.pic_struct = 2;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_TOP| MFX_PICSTRUCT_FIELD_PAIRED_PREV):
+            pt.pic_struct = 9;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_TOP|MFX_PICSTRUCT_FIELD_PAIRED_NEXT):
+            pt.pic_struct = 11;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_BOTTOM| MFX_PICSTRUCT_FIELD_PAIRED_PREV):
+            pt.pic_struct = 10;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_BOTTOM| MFX_PICSTRUCT_FIELD_PAIRED_NEXT):
+            pt.pic_struct = 12;
+            pt.source_scan_type = 0;
+            break;
+         default:
+            pt.pic_struct = ((!!(par.mfx.FrameInfo.PicStruct & MFX_PICSTRUCT_FIELD_BFF)) == task.m_secondField) ? 1 : 2;
+            pt.source_scan_type = 0;
+            break;
+        }
+    }
+    else if (par.mfx.FrameInfo.PicStruct & MFX_PICSTRUCT_PROGRESSIVE)
+    {
+        switch (task.m_surf->Info.PicStruct)
+        {
+        case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FRAME_DOUBLING):
+            pt.pic_struct = 7;
+            pt.source_scan_type = 1;
+            break;
+        case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FRAME_TRIPLING):
+            pt.pic_struct = 8;
+            pt.source_scan_type = 1;
+            break;
+        default:
+            pt.pic_struct = 0;
+            pt.source_scan_type = 1;
+            break;
+        }
+    }
+    else
+    {
+        switch (task.m_surf->Info.PicStruct)
+        {
+        case mfxU16(MFX_PICSTRUCT_FIELD_TFF):
+            pt.pic_struct = 3;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_BFF):
+            pt.pic_struct = 4;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_TFF):
+            pt.pic_struct = 3;
+            pt.source_scan_type = 1;
+            break;
+        case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_BFF):
+            pt.pic_struct = 4;
+            pt.source_scan_type = 1;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_TFF | MFX_PICSTRUCT_FIELD_REPEATED):
+            pt.pic_struct = 5;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_TFF | MFX_PICSTRUCT_FIELD_REPEATED):
+            pt.pic_struct = 5;
+            pt.source_scan_type = 1;
+            break;
+        case mfxU16(MFX_PICSTRUCT_FIELD_BFF | MFX_PICSTRUCT_FIELD_REPEATED):
+            pt.pic_struct = 6;
+            pt.source_scan_type = 0;
+            break;
+        case mfxU16(MFX_PICSTRUCT_PROGRESSIVE | MFX_PICSTRUCT_FIELD_BFF | MFX_PICSTRUCT_FIELD_REPEATED):
+            pt.pic_struct = 6;
+            pt.source_scan_type = 1;
+            break;
+
+        default:
+            pt.pic_struct = 0;
+            pt.source_scan_type = 2;
+            break;
+        }
     }
 
     pt.duplicate_flag = 0;
@@ -2770,10 +2814,7 @@ void HeaderPacker::GetSkipSlice(Task const & task, mfxU32 id, mfxU8*& buf, mfxU3
 
     codingTree(xCtu, yCtu, log2CtuSize, m_bs, sh, xCtu0, yCtu0, &context_array[0]);
 
-    m_bs.EncodeBin(CONTEXT(&context_array[0], END_OF_SLICE_FLAG_HEVC), 1);
-
     m_bs.SliceFinish();
-
 
     if (qpd_offset)
         *qpd_offset -= (mfxU32)(buf - m_bs.GetStart()) * 8;

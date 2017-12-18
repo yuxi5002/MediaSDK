@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -81,28 +81,32 @@ void MFX_SCHEDULER_TASK::OnDependencyResolved(mfxStatus result)
         // release the current task resources
         ReleaseResources();
 
-        // be aware of external call
-        try
-        {
-            MFX_ENTRY_POINT &entryPoint = param.task.entryPoint;
-
-            if (entryPoint.pCompleteProc)
-            {
-                // release the component's resources
-                entryPoint.pCompleteProc(entryPoint.pState,
-                                         entryPoint.pParam,
-                                         MFX_ERR_ABORTED);
-            }
-        }
-        catch(...)
-        {
-        }
+        CompleteTask(MFX_ERR_ABORTED);
     }
 
     // call the parent's method
     mfxDependencyItem<MFX_TASK_NUM_DEPENDENCIES>::OnDependencyResolved(result);
 
-} // void MFX_SCHEDULER_TASK::OnDependencyResolved(mfxStatus result)
+}
+
+mfxStatus MFX_SCHEDULER_TASK::CompleteTask(mfxStatus res)
+{
+    mfxStatus sts;
+    MFX_ENTRY_POINT &entryPoint = param.task.entryPoint;
+
+    if (!entryPoint.pCompleteProc) return MFX_ERR_NONE;
+
+    try {
+        // release the component's resources
+        sts = entryPoint.pCompleteProc(
+            entryPoint.pState,
+            entryPoint.pParam,
+            res);
+    } catch(...) {
+        sts = MFX_ERR_UNKNOWN;
+    }
+    return sts;
+}
 
 void MFX_SCHEDULER_TASK::ReleaseResources(void)
 {

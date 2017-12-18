@@ -35,6 +35,7 @@ FEI_EncodeInterface::FEI_EncodeInterface(MFXVideoSession* session, mfxU32 allocI
     , m_pMBstat_out(NULL)
     , m_pMV_out(NULL)
     , m_pMBcode_out(NULL)
+    , m_pRepackStat_out(NULL)
 {
     MSDK_ZERO_MEMORY(m_mfxBS);
     MSDK_ZERO_MEMORY(m_videoParams);
@@ -101,6 +102,7 @@ FEI_EncodeInterface::~FEI_EncodeInterface()
     SAFE_FCLOSE(m_pMBstat_out);
     SAFE_FCLOSE(m_pMV_out);
     SAFE_FCLOSE(m_pMBcode_out);
+    SAFE_FCLOSE(m_pRepackStat_out);
 
     m_pAppConfig->PipelineCfg.pEncodeVideoParam = NULL;
 }
@@ -251,6 +253,8 @@ mfxStatus FEI_EncodeInterface::FillParameters()
     pCodingOption3->NumRefActiveBL1[0] = m_pAppConfig->NumRefActiveBL1;
     // weight table file is provided, so explicit weight prediction is enabled.
     pCodingOption3->WeightedPred       = m_pAppConfig->weightsFile ? MFX_WEIGHTED_PRED_EXPLICIT : MFX_WEIGHTED_PRED_UNKNOWN;
+    pCodingOption3->WeightedBiPred     = m_pAppConfig->weightsFile ? MFX_WEIGHTED_PRED_EXPLICIT : MFX_WEIGHTED_PRED_UNKNOWN;
+    pCodingOption3->WeightedBiPred     = m_pAppConfig->bImplicitWPB ? MFX_WEIGHTED_PRED_IMPLICIT : pCodingOption3->WeightedBiPred;
 
     /* values stored in m_CodingOption3 required to fill encoding task for PREENC/ENC/PAK*/
     m_InitExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(pCodingOption3));
@@ -332,6 +336,16 @@ mfxStatus FEI_EncodeInterface::FillParameters()
         MSDK_FOPEN(m_pRepackCtrl_in, m_pAppConfig->repackctrlFile, MSDK_CHAR("rb"));
         if (m_pRepackCtrl_in == NULL) {
             mdprintf(stderr, "Can't open file %s\n", m_pAppConfig->repackctrlFile);
+            exit(-1);
+        }
+    }
+
+    if (m_pRepackStat_out == NULL && m_pAppConfig->repackstatFile != NULL)
+    {
+        printf("Using Repack status output file: %s\n", m_pAppConfig->repackstatFile);
+        MSDK_FOPEN(m_pRepackStat_out, m_pAppConfig->repackstatFile, MSDK_CHAR("w"));
+        if (m_pRepackStat_out == NULL) {
+            mdprintf(stderr, "Can't open file %s\n", m_pAppConfig->repackstatFile);
             exit(-1);
         }
     }
@@ -564,7 +578,8 @@ mfxStatus FEI_EncodeInterface::InitFrameParams(iTask* eTask)
                     continue;
 
                 mfxExtPredWeightTable* feiWeightTable = reinterpret_cast<mfxExtPredWeightTable*>(*it);
-                if ((eTask->m_type[pWeightsId] & MFX_FRAMETYPE_P) || (eTask->m_type[pWeightsId] & MFX_FRAMETYPE_B))
+                if ((eTask->m_type[pWeightsId] & MFX_FRAMETYPE_P) ||
+                    ((eTask->m_type[pWeightsId] & MFX_FRAMETYPE_B) && !m_pAppConfig->bImplicitWPB))
                 {
                     SAFE_FREAD(&(feiWeightTable->LumaLog2WeightDenom),   sizeof(mfxU16),
                                1, m_pWeights_in, MFX_ERR_MORE_DATA);
@@ -767,6 +782,21 @@ mfxStatus FEI_EncodeInterface::FlushOutput(iTask* eTask)
                 SAFE_FWRITE(mbcodeBuf->MB, sizeof(mbcodeBuf->MB[0])*mbcodeBuf->NumMBAlloc, 1, m_pMBcode_out, MFX_ERR_MORE_DATA);
             }
             break;
+
+        case MFX_EXTBUFF_FEI_REPACK_STAT:
+            if (m_pRepackStat_out)
+            {
+                mfxExtFeiRepackStat* repackStat = reinterpret_cast<mfxExtFeiRepackStat*>
+                                                  (output_buffers[i]);
+                mfxI8 repackStatChar[64];
+                sprintf(repackStatChar, "FrameOrder %d: %d NumPasses\n",
+                        eTask->m_frameOrder, repackStat->NumPasses);
+                SAFE_FWRITE(repackStatChar, strlen(repackStatChar), 1,
+                            m_pRepackStat_out, MFX_ERR_MORE_DATA);
+                repackStat->NumPasses = 0;
+            }
+            break;
+
         } // switch (output_buffers[i]->BufferId)
     } // for (mfxU32 i = 0; i < n_output_buffers; ++i)
 
@@ -800,6 +830,7 @@ mfxStatus FEI_EncodeInterface::ResetState()
     SAFE_FSEEK(m_pMBstat_out,    0, SEEK_SET, MFX_ERR_MORE_DATA);
     SAFE_FSEEK(m_pMV_out,        0, SEEK_SET, MFX_ERR_MORE_DATA);
     SAFE_FSEEK(m_pMBcode_out,    0, SEEK_SET, MFX_ERR_MORE_DATA);
+    SAFE_FSEEK(m_pRepackStat_out,0, SEEK_SET, MFX_ERR_MORE_DATA);
 
     return sts;
 }

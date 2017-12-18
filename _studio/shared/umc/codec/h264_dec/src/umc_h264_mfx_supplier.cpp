@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -568,7 +568,7 @@ public:
     virtual ~PosibleMVC();
 
     virtual UMC::Status DecodeHeader(UMC::MediaData* params, mfxBitstream *bs, mfxVideoParam *out);
-    virtual UMC::Status ProcessNalUnit(UMC::MediaData * data);
+    virtual UMC::Status ProcessNalUnit(UMC::MediaData * data, mfxBitstream *bs);
     virtual bool IsEnough() const;
 
 
@@ -663,7 +663,7 @@ UMC::Status PosibleMVC::DecodeHeader(UMC::MediaData * data, mfxBitstream *bs, mf
             bs->DataLength = (mfxU32)data->GetDataSize();
         }
 
-        umcRes = ProcessNalUnit(data);
+        umcRes = ProcessNalUnit(data, bs);
         if (umcRes == UMC::UMC_ERR_UNSUPPORTED)
             umcRes = UMC::UMC_OK;
 
@@ -717,8 +717,11 @@ UMC::Status PosibleMVC::DecodeHeader(UMC::MediaData * data, mfxBitstream *bs, mf
     return UMC::UMC_ERR_NOT_ENOUGH_DATA;
 }
 
-UMC::Status PosibleMVC::ProcessNalUnit(UMC::MediaData * data)
+UMC::Status PosibleMVC::ProcessNalUnit(UMC::MediaData * data, mfxBitstream * bs)
 {
+
+    mfxExtDecodeErrorReport * pDecodeErrorReport = (mfxExtDecodeErrorReport*)GetExtendedBuffer(bs->ExtParam, bs->NumExtParam, MFX_EXTBUFF_DECODE_ERROR_REPORT);
+
     try
     {
         int32_t startCode = m_supplier->GetNalUnitSplitter()->CheckNalUnitType(data);
@@ -832,7 +835,7 @@ UMC::Status PosibleMVC::ProcessNalUnit(UMC::MediaData * data)
         {
             try
             {
-                UMC::Status umcRes = m_supplier->ProcessNalUnit(nalUnit);
+                UMC::Status umcRes = m_supplier->ProcessNalUnit(nalUnit, pDecodeErrorReport);
                 if (umcRes < UMC::UMC_OK)
                 {
                     return UMC::UMC_OK;

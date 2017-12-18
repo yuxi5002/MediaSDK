@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -56,6 +56,9 @@ public:
     virtual mfxStatus  LockBuffer(mfxMemId mid, mfxU8 **ptr);
     virtual mfxStatus  UnlockBuffer(mfxMemId mid);
     virtual mfxStatus  FreeBuffer(mfxMemId mid);
+
+    // DEPRECATED
+    virtual mfxStatus  CheckHandle();
 
     virtual mfxStatus  GetFrameHDL(mfxMemId mid, mfxHDL *handle, bool ExtendedSearch = true);
 
@@ -110,9 +113,13 @@ public:
     virtual mfxU32 GetNumWorkingThreads(void) {return m_numThreadsAvailable;}
     virtual void INeedMoreThreadsInside(const void *pComponent);
 
+    virtual mfxStatus DoFastCopy(mfxFrameSurface1 *pDst, mfxFrameSurface1 *pSrc);
     virtual mfxStatus DoFastCopyExtended(mfxFrameSurface1 *pDst, mfxFrameSurface1 *pSrc);
-    mfxStatus DoSWFastCopy(mfxFrameSurface1 *pDst, mfxFrameSurface1 *pSrc, int copyFlag);
+
     virtual mfxStatus DoFastCopyWrapper(mfxFrameSurface1 *pDst, mfxU16 dstMemType, mfxFrameSurface1 *pSrc, mfxU16 srcMemType);
+
+    // DEPRECATED
+    virtual bool IsFastCopyEnabled(void);
 
     virtual bool IsExternalFrameAllocator() const;
     virtual eMFXHWType   GetHWType() { return MFX_HW_UNKNOWN; }
@@ -305,5 +312,7 @@ private:
     // Forbid the assignment operator
     CommonCORE & operator = (const CommonCORE &);
 };
+
+mfxStatus CoreDoSWFastCopy(mfxFrameSurface1 *pDst, mfxFrameSurface1 *pSrc, int copyFlag);
 
 #endif

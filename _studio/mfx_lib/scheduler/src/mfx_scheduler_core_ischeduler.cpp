@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -132,8 +132,8 @@ mfxStatus mfxSchedulerCore::Initialize2(const MFX_SCHEDULER_PARAM2 *pParam)
                 // prepare context
                 m_pThreadCtx[i].threadNum = i;
                 m_pThreadCtx[i].pSchedulerCore = this;
-                umcRes = m_pThreadCtx[i].taskAdded.Init(0, 0);
-                if (UMC::UMC_OK != umcRes) {
+                vm_status vmRes = vm_cond_init(&m_pThreadCtx[i].taskAdded);
+                if (VM_OK != vmRes) {
                     return MFX_ERR_UNKNOWN;
                 }
                 // spawn a thread
@@ -216,7 +216,7 @@ mfxStatus mfxSchedulerCore::Synchronize(mfxTaskHandle handle, mfxU32 timeToWait)
 
     if (MFX_SINGLE_THREAD == m_param.flags)
     {
-        //let really run task to 
+        //let really run task to
         MFX_CALL_INFO call = {0};
         mfxTaskHandle previousTaskHandle = {0, 0};
 
@@ -225,30 +225,37 @@ mfxStatus mfxSchedulerCore::Synchronize(mfxTaskHandle handle, mfxU32 timeToWait)
         mfxU64 frequency = vm_time_get_frequency();
         while (MFX_WRN_IN_EXECUTION == pTask->opRes)
         {
+            UMC::AutomaticMutex guard(m_guard);
             task_sts = GetTask(call, previousTaskHandle, 0);
-            
+
             if (task_sts != MFX_ERR_NONE)
                 continue;
+
+            guard.Unlock();
 
             call.res = call.pTask->entryPoint.pRoutine(call.pTask->entryPoint.pState,
                                                        call.pTask->entryPoint.pParam,
                                                        call.threadNum,
                                                        call.callNum);
-            
+
+            guard.Lock();
 
             // save the previous task's handle
             previousTaskHandle = call.taskHandle;
-            
+
             MarkTaskCompleted(&call, 0);
 
-                                   
             if ((mfxU32)((GetHighPerformanceCounter() - start)/frequency) > timeToWait)
                 break;
-            
+
             if (MFX_TASK_DONE!= call.res)
             {
                 vm_status vmRes;
+
+                guard.Unlock();
                 vmRes = vm_event_timed_wait(&m_hwTaskDone, 15 /*ms*/);
+                guard.Lock();
+
                 if (VM_OK == vmRes|| VM_TIMEOUT == vmRes)
                 {
                     vmRes = vm_event_reset(&m_hwTaskDone);

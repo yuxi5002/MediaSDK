@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -41,6 +41,16 @@
 
 namespace UMC
 {
+
+inline void SetDecodeErrorTypes(NAL_Unit_Type nalUnit, mfxExtDecodeErrorReport *pDecodeErrorReport)
+{
+    switch (nalUnit)
+    {
+        case NAL_UT_SPS: pDecodeErrorReport->ErrorTypes |= MFX_ERROR_SPS; break;
+        case NAL_UT_PPS: pDecodeErrorReport->ErrorTypes |= MFX_ERROR_PPS; break;
+        default: break;
+    };
+}
 
 /****************************************************************************************************/
 // DPBOutput class routine
@@ -3133,7 +3143,7 @@ Status TaskSupplier::AddSource(MediaData * pSource)
     return umcRes;
 }
 
-Status TaskSupplier::ProcessNalUnit(NalUnit *nalUnit)
+Status TaskSupplier::ProcessNalUnit(NalUnit *nalUnit, mfxExtDecodeErrorReport * pDecodeErrorReport)
 {
     Status umcRes = UMC_OK;
 
@@ -3158,6 +3168,10 @@ Status TaskSupplier::ProcessNalUnit(NalUnit *nalUnit)
     case NAL_UT_SUBSET_SPS:
     case NAL_UT_PREFIX:
         umcRes = DecodeHeaders(nalUnit);
+
+        if (pDecodeErrorReport && umcRes == UMC_ERR_INVALID_STREAM)
+           SetDecodeErrorTypes(nalUnit->GetNalUnitType(), pDecodeErrorReport);
+
         break;
 
     case NAL_UT_SEI:
@@ -3207,6 +3221,9 @@ Status TaskSupplier::AddOneFrame(MediaData * pSource)
 
     do
     {
+        MediaData::AuxInfo* aux = (pSource) ? pSource->GetAuxInfo(MFX_EXTBUFF_DECODE_ERROR_REPORT) : NULL;
+        mfxExtDecodeErrorReport* pDecodeErrorReport = (aux) ? reinterpret_cast<mfxExtDecodeErrorReport*>(aux->ptr) : NULL;
+
         NalUnit *nalUnit = m_pNALSplitter->GetNalUnits(pSource);
 
         if (!nalUnit && pSource)
@@ -3270,6 +3287,10 @@ Status TaskSupplier::AddOneFrame(MediaData * pSource)
                     int32_t size = (int32_t)nalUnit->GetDataSize();
                     pSource->MoveDataPointer(- size - 3);
                 }
+
+                if (pDecodeErrorReport && umsRes == UMC_ERR_INVALID_STREAM)
+                    SetDecodeErrorTypes(nalUnit->GetNalUnitType(), pDecodeErrorReport);
+
                 return umsRes;
             }
 

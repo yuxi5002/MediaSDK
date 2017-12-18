@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -154,22 +154,27 @@ mfxModuleHandle mfx_dll_load(const msdk_disp_char *pFileName)
     {
         return NULL;
     }
-
+#if !defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
     // set the silent error mode
     DWORD prevErrorMode = 0;
-#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__) && !defined(WIN_TRESHOLD_MOBILE)
+#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__)
     SetThreadErrorMode(SEM_FAILCRITICALERRORS, &prevErrorMode);
 #else
     prevErrorMode = SetErrorMode(SEM_FAILCRITICALERRORS);
 #endif
-    // load the library's module
-    hModule = LoadLibraryExW(pFileName,NULL,0);
-    // set the previous error mode
-#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__) && !defined(WIN_TRESHOLD_MOBILE)
+#endif // !defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
+
+        // load the library's module
+        hModule = LoadLibraryExW(pFileName, NULL, 0);
+
+#if !defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
+        // set the previous error mode
+#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__)
     SetThreadErrorMode(prevErrorMode, NULL);
 #else
     SetErrorMode(prevErrorMode);
 #endif
+#endif // !defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
 
     return hModule;
 
@@ -197,6 +202,7 @@ bool mfx_dll_free(mfxModuleHandle handle)
     return !!bRes;
 } // bool mfx_dll_free(mfxModuleHandle handle)
 
+#if !defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
 mfxModuleHandle mfx_get_dll_handle(const msdk_disp_char *pFileName)
 {
     mfxModuleHandle hModule = (mfxModuleHandle) 0;
@@ -209,7 +215,7 @@ mfxModuleHandle mfx_get_dll_handle(const msdk_disp_char *pFileName)
 
     // set the silent error mode
     DWORD prevErrorMode = 0;
-#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__) && !defined(WIN_TRESHOLD_MOBILE)
+#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__)
     SetThreadErrorMode(SEM_FAILCRITICALERRORS, &prevErrorMode); 
 #else
     prevErrorMode = SetErrorMode(SEM_FAILCRITICALERRORS);
@@ -217,13 +223,14 @@ mfxModuleHandle mfx_get_dll_handle(const msdk_disp_char *pFileName)
     // load the library's module
     GetModuleHandleExW(0, pFileName, (HMODULE*) &hModule);
     // set the previous error mode
-#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__) && !defined(WIN_TRESHOLD_MOBILE)
+#if (_WIN32_WINNT >= 0x0600) && !(__GNUC__)
     SetThreadErrorMode(prevErrorMode, NULL);
 #else
     SetErrorMode(prevErrorMode);
 #endif
     return hModule;
 }
+#endif //!defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
 
 
 } // namespace MFX

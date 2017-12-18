@@ -311,6 +311,7 @@ if( DEFINED VP8_DECODER_HW_GUID )
 
   list( APPEND sources ${plugin_common_sources} )
   list( APPEND sources ${MSDK_LIB_ROOT}/shared/src/libmfxsw_decode.cpp )
+  list( APPEND sources ${MSDK_LIB_ROOT}/shared/src/mfx_vpx_dec_common.cpp )
 
   set( prefix ${MSDK_LIB_ROOT}/plugin/src )
   list( APPEND sources.plus

@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -451,15 +451,19 @@ template <typename T>
 bool MfxH264FEIcommon::FirstFieldProcessingDone(T* inParams, const DdiTask & task)
 {
     mfxExtFeiPPS * pDataPPS = GetExtBufferFEI(inParams, 0);
+    mfxExtFeiPreEncCtrl * pDataPreEncCtrl = GetExtBufferFEI(inParams, 0);
 
-    if (!pDataPPS)
+    if (!!pDataPPS == !!pDataPreEncCtrl)
     {
-        // In this case absence of PPS will be discovered at parameters check stage
+        // In this case absence of PPS and PreENC will be discovered at parameters check stage
         return 0;
     }
 
-    switch (pDataPPS->PictureType)
+    mfxU16  PictureType = pDataPPS ? pDataPPS->PictureType : pDataPreEncCtrl->PictureType;
+
+    switch (PictureType)
     {
+        //For PAK or PREENC, Picturetype will be obtained from only one on them
     case MFX_PICTYPE_TOPFIELD:
         return task.m_fid[1] == 0; // i.e. Bottom Field was already coded and current picstruct is BFF
         break;
@@ -479,11 +483,14 @@ mfxStatus MfxH264FEIcommon::CheckInitExtBuffers(const MfxVideoParam & owned_vide
 {
     // Slice number control through CO3 is not allowed
     mfxExtCodingOption3 const * extOpt3 = GetExtBuffer(owned_video);
-
-    MFX_CHECK(extOpt3->NumSliceI == owned_video.mfx.NumSlice, MFX_ERR_INVALID_VIDEO_PARAM);
-    MFX_CHECK(extOpt3->NumSliceP == owned_video.mfx.NumSlice, MFX_ERR_INVALID_VIDEO_PARAM);
-    MFX_CHECK(extOpt3->NumSliceB == owned_video.mfx.NumSlice, MFX_ERR_INVALID_VIDEO_PARAM);
-
+    mfxExtFeiParam const * feiParam = GetExtBuffer(owned_video);
+    if (feiParam->Func != MFX_FEI_FUNCTION_PREENC)
+    {
+        // NumSliceI/NumSliceP/NumSliceB are unnecessary parameters for PreENC and will not be initialized
+        MFX_CHECK(extOpt3->NumSliceI == owned_video.mfx.NumSlice, MFX_ERR_INVALID_VIDEO_PARAM);
+        MFX_CHECK(extOpt3->NumSliceP == owned_video.mfx.NumSlice, MFX_ERR_INVALID_VIDEO_PARAM);
+        MFX_CHECK(extOpt3->NumSliceB == owned_video.mfx.NumSlice, MFX_ERR_INVALID_VIDEO_PARAM);
+    }
 
     // Internal headers should be updated before CreateAccelerationService call
     const mfxExtFeiSPS* pDataSPS = GetExtBuffer(passed_video);
@@ -560,6 +567,11 @@ bool MfxH264FEIcommon::IsRunTimeInputExtBufferIdSupported(MfxVideoParam const & 
                    || id == MFX_EXTBUFF_FEI_ENC_MB
                    || id == MFX_EXTBUFF_FEI_ENC_QP
                    );
+        case MFX_FEI_FUNCTION_PREENC:
+            return (  id == MFX_EXTBUFF_FEI_PREENC_CTRL
+                   || id == MFX_EXTBUFF_FEI_PREENC_MV_PRED
+                   || id == MFX_EXTBUFF_FEI_ENC_QP
+                   );
         default:
             return true;
     }
@@ -567,10 +579,23 @@ bool MfxH264FEIcommon::IsRunTimeInputExtBufferIdSupported(MfxVideoParam const & 
 
 bool MfxH264FEIcommon::IsRunTimeOutputExtBufferIdSupported(MfxVideoParam const & owned_video, mfxU32 id)
 {
-    return (  id == MFX_EXTBUFF_FEI_ENC_MV
-           || id == MFX_EXTBUFF_FEI_ENC_MB_STAT
-           || id == MFX_EXTBUFF_FEI_PAK_CTRL
-           );
+    mfxExtFeiParam const * feiParam = GetExtBuffer(owned_video);
+    switch(feiParam->Func)
+    {
+        case MFX_FEI_FUNCTION_ENC:
+            return (  id == MFX_EXTBUFF_FEI_ENC_MV
+                   || id == MFX_EXTBUFF_FEI_ENC_MB_STAT
+                   || id == MFX_EXTBUFF_FEI_PAK_CTRL
+                   );
+        case MFX_FEI_FUNCTION_PREENC:
+            return (  id == MFX_EXTBUFF_FEI_PREENC_MV
+                   || id == MFX_EXTBUFF_FEI_PREENC_MB
+                   );
+        case MFX_FEI_FUNCTION_PAK:
+            return false;
+        default:
+            return true;
+     }
 }
 
 template mfxStatus MfxH264FEIcommon::CheckRuntimeExtBuffers<>(mfxENCInput* input, mfxENCOutput* output, const MfxVideoParam & owned_video, const DdiTask & task);
@@ -871,4 +896,4 @@ mfxStatus MfxH264FEIcommon::CheckOneDPBCorrectness(mfxExtFeiPPS::mfxExtFeiPpsDPB
 }
 
 
-#endif // defined(MFX_VA) && defined(MFX_ENABLE_H264_VIDEO_ENCODE_HW) && defined(MFX_ENABLE_H264_VIDEO_FEI_ENC)
+#endif // defined(MFX_VA) && defined(MFX_ENABLE_H264_VIDEO_ENCODE_HW) && (defined(MFX_ENABLE_H264_VIDEO_FEI_ENC) || defined(MFX_ENABLE_H264_VIDEO_FEI_PAK))

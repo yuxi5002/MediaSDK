@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -721,6 +721,7 @@ typedef struct _VAStatsStatistics16x16Intel
     unsigned int    pixel_average8x8[4];
 } VAStatsStatistics16x16Intel;  // size is 64 bytes
 
+#if !defined (ANDROID)
 
 #define VA_ENC_FUNCTION_DEFAULT_INTEL 0x00000000
 #define VA_ENC_FUNCTION_ENC_INTEL     0x00000001
@@ -747,5 +748,36 @@ typedef struct _VAMotionVectorIntel {
     short  mv1[2];
 } VAMotionVectorIntel;
 
+#endif
+
+typedef VAGenericID VAMFEContextID;
+
+#define VPG_EXT_VA_CREATE_MFECONTEXT  "DdiMedia_CreateMfeContext"
+typedef VAStatus (*vaExtCreateMfeContext)(
+    VADisplay           dpy,
+    VAMFEContextID      *mfe_context
+);
+
+#define VPG_EXT_VA_ADD_CONTEXT  "DdiMedia_AddContext"
+typedef VAStatus (*vaExtAddContext)(
+    VADisplay           dpy,
+    VAContextID         context,
+    VAMFEContextID      mfe_context
+);
+
+#define VPG_EXT_VA_RELEASE_CONTEXT  "DdiMedia_ReleaseContext"
+typedef VAStatus (*vaExtReleaseContext)(
+    VADisplay           dpy,
+    VAContextID         context,
+    VAMFEContextID      mfe_context
+);
+
+#define VPG_EXT_VA_MFE_SUBMIT  "DdiMedia_MfeSubmit"
+typedef VAStatus (*vaExtMfeSubmit)(
+    VADisplay           dpy,
+    VAMFEContextID      mfe_context,
+    VAContextID         *contexts,
+    int                 num_contexts
+);
 
 #endif // __VAAPI_EXT_INTERFACE_H__

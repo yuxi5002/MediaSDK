@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -187,7 +187,8 @@ mfxStatus CheckFrameInfoCodecs(mfxFrameInfo  *info, mfxU32 codecId, bool isHW)
         if (info->FourCC != MFX_FOURCC_NV12 &&
             info->FourCC != MFX_FOURCC_YUY2 &&
             info->FourCC != MFX_FOURCC_P010 &&
-            info->FourCC != MFX_FOURCC_NV16
+            info->FourCC != MFX_FOURCC_NV16 &&
+            info->FourCC != MFX_FOURCC_P210
             )
             return MFX_ERR_INVALID_VIDEO_PARAM;
         break;
@@ -436,6 +437,7 @@ mfxStatus CheckFrameData(const mfxFrameSurface1 *surface)
                 return MFX_ERR_UNDEFINED_BEHAVIOR;
             break;
         case MFX_FOURCC_RGB4:
+        case MFX_FOURCC_BGR4:
         case MFX_FOURCC_AYUV:
             if (!surface->Data.A || !surface->Data.R || !surface->Data.G || !surface->Data.B)
                 return MFX_ERR_UNDEFINED_BEHAVIOR;
@@ -453,10 +455,11 @@ mfxStatus CheckFrameData(const mfxFrameSurface1 *surface)
     return MFX_ERR_NONE;
 }
 
-mfxStatus CheckDecodersExtendedBuffers(mfxVideoParam* par)
+mfxStatus CheckDecodersExtendedBuffers(mfxVideoParam const* par)
 {
     static const mfxU32 g_commonSupportedExtBuffers[]       = {
                                                                MFX_EXTBUFF_OPAQUE_SURFACE_ALLOCATION,
+                                                               MFX_EXTBUFF_DEC_ADAPTIVE_PLAYBACK,
     };
 
     static const mfxU32 g_decoderSupportedExtBuffersAVC[]   = {
@@ -701,6 +704,7 @@ void mfxVideoParamWrapper::CopyVideoParam(const mfxVideoParam & par)
         case MFX_EXTBUFF_MVC_TARGET_VIEWS:
         case MFX_EXTBUFF_VIDEO_SIGNAL_INFO:
         case MFX_EXTBUFF_OPAQUE_SURFACE_ALLOCATION:
+        case MFX_EXTBUFF_DEC_ADAPTIVE_PLAYBACK:
         case MFX_EXTBUFF_JPEG_QT:
         case MFX_EXTBUFF_JPEG_HUFFMAN:
         case MFX_EXTBUFF_HEVC_PARAM:

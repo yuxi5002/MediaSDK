@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -289,10 +289,8 @@ void PackerVA::PackPicParams(H264DecoderFrameInfo * pSliceInfo, H264Slice * pSli
 
     pPicParams_H264->frame_num = (unsigned short)pSliceHeader->frame_num;
 
-#ifndef MFX_VAAPI_UPSTREAM
     pPicParams_H264->num_ref_idx_l0_default_active_minus1 = (unsigned char)(pPicParamSet->num_ref_idx_l0_active-1);
     pPicParams_H264->num_ref_idx_l1_default_active_minus1 = (unsigned char)(pPicParamSet->num_ref_idx_l1_active-1);
-#endif
 
     //create reference picture list
     for (int32_t i = 0; i < 16; i++)
@@ -405,11 +403,7 @@ void PackerVA::CreateSliceParamBuffer(H264DecoderFrameInfo * pSliceInfo)
 
     if (!m_va->IsLongSliceControl())
     {
-#ifndef MFX_VAAPI_UPSTREAM
         sizeOfStruct = sizeof(VASliceParameterBufferH264Base);
-#else
-        throw h264_exception(UMC_ERR_FAILED);
-#endif
     }
     m_va->GetCompBuffer(VASliceParameterBufferType, &pSliceParamBuf, sizeOfStruct*(count));
     if (!pSliceParamBuf)
@@ -467,12 +461,8 @@ int32_t PackerVA::PackSliceParams(H264Slice *pSlice, int32_t sliceNum, int32_t c
     }
     else
     {
-#ifndef MFX_VAAPI_UPSTREAM
         pSlice_H264 = (VASliceParameterBufferH264*)((VASliceParameterBufferH264Base*)pSlice_H264 + sliceNum);
         memset(pSlice_H264, 0, sizeof(VASliceParameterBufferH264Base));
-#else
-        throw h264_exception(UMC_ERR_FAILED);
-#endif
     }
 
     uint32_t NalUnitSize, SliceDataOffset;
@@ -695,9 +685,7 @@ void PackerVA::PackProcessingInfo(H264DecoderFrameInfo * sliceInfo)
     MFX_INTERNAL_CPY(pipelineBuf, &vpVA->m_pipelineParams, sizeof(VAProcPipelineParameterBuffer));
 
     pipelineBuf->surface = m_va->GetSurfaceID(sliceInfo->m_pFrame->m_index); // should filled in packer
-#ifndef MFX_VAAPI_UPSTREAM
     pipelineBuf->additional_outputs = (VASurfaceID*)vpVA->GetCurrentOutputSurface();
-#endif
 }
 
 void PackerVA::PackQmatrix(const H264ScalingPicParams * scaling)
@@ -868,7 +856,7 @@ Status PackerVA::QueryStreamOut(H264DecoderFrame* pFrame)
     char* dst = reinterpret_cast<char*>(so->MB);
     if (!dst)
         return UMC_ERR_FAILED;
-    
+
     void const* src = buffer->GetPtr();
     VM_ASSERT(src);
 

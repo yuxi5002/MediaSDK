@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -64,7 +64,7 @@ typedef struct
 
     mfxU32  IntraCost;
     mfxU32  InterCost;
-    mfxU32  DependencyCost;
+    mfxU32  DependencyCost; //aggregated cost, how this frame influences subsequent frames
     mfxU16  Layer;
     mfxU16  reserved[23];
 
@@ -76,12 +76,12 @@ typedef struct  {
 
     mfxU16  reserved[20];
 
-    mfxU16  NumAlloc;
-    mfxU16  NumStream;
-    mfxU16  NumFrame;
-    mfxLAFrameInfo   *FrameStat; 
+    mfxU16  NumAlloc; //number of allocated mfxLAFrameInfo structures
+    mfxU16  NumStream; //number of resolutions
+    mfxU16  NumFrame; //number of frames for each resolution
+    mfxLAFrameInfo   *FrameStat; //frame statistics 
 
-    mfxFrameSurface1 *OutSurface;
+    mfxFrameSurface1 *OutSurface; //reordered surface
 
 } mfxExtLAFrameStatistics;
 

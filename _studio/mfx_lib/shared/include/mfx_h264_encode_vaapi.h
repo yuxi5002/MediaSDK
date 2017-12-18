@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -91,14 +91,14 @@ namespace MfxHwH264Encode
     // map feedbackNumber <-> VASurface
     typedef struct
     {
-        VASurfaceID surface;
-        mfxU32 number;
-        mfxU32 idxBs;
-        mfxU32 size; // valid only if Surface ID == VA_INVALID_SURFACE (skipped frames)
+        VASurfaceID surface = VA_INVALID_SURFACE;
+        mfxU32 number       = 0;
+        mfxU32 idxBs        = 0;
+        mfxU32 size         = 0; // valid only if Surface ID == VA_INVALID_SURFACE (skipped frames)
 #if defined(MFX_ENABLE_H264_VIDEO_FEI_PREENC) || defined(MFX_ENABLE_H264_VIDEO_FEI_ENCPAK)
-        VASurfaceID mv;
-        VASurfaceID mbstat;
-        VASurfaceID mbcode;
+        VASurfaceID mv      = VA_INVALID_ID;
+        VASurfaceID mbstat  = VA_INVALID_ID;
+        VASurfaceID mbcode  = VA_INVALID_ID;
 #endif
     } ExtVASurface;
 
@@ -191,7 +191,8 @@ namespace MfxHwH264Encode
         mfxStatus QueryStatusFEI(
             DdiTask const & task,
             mfxU32  feiFieldId,
-            ExtVASurface const & curFeedback);
+            ExtVASurface const & curFeedback,
+            mfxU32 codedStatus);
 
         virtual
         mfxStatus Destroy();
@@ -229,13 +230,13 @@ namespace MfxHwH264Encode
         // encode buffer to send vaRender()
         VABufferID m_spsBufferId;
         VABufferID m_hrdBufferId;
-        VABufferID m_rateParamBufferId; // VAEncMiscParameterRateControl
-        VABufferID m_frameRateId; // VAEncMiscParameterFrameRate
-        VABufferID m_qualityLevelId;  // VAEncMiscParameterBufferQualityLevel
-        VABufferID m_maxFrameSizeId; // VAEncMiscParameterFrameRate
-        VABufferID m_quantizationId;  // VAEncMiscParameterQuantization
-        VABufferID m_rirId;           // VAEncMiscParameterRIR
-        VABufferID m_privateParamsId; // VAEncMiscParameterPrivate
+        VABufferID m_rateParamBufferId;         // VAEncMiscParameterRateControl
+        VABufferID m_frameRateId;               // VAEncMiscParameterFrameRate
+        VABufferID m_qualityLevelId;            // VAEncMiscParameterBufferQualityLevel
+        VABufferID m_maxFrameSizeId;            // VAEncMiscParameterFrameRate
+        VABufferID m_quantizationId;            // VAEncMiscParameterQuantization
+        VABufferID m_rirId;                     // VAEncMiscParameterRIR
+        VABufferID m_privateParamsId;           // VAEncMiscParameterPrivate
         VABufferID m_miscParameterSkipBufferId; // VAEncMiscParameterSkipFrame
         VABufferID m_roiBufferId;
         VABufferID m_ppsBufferId;
@@ -305,9 +306,7 @@ namespace MfxHwH264Encode
 
         VAEncMiscParameterRateControl  m_vaBrcPar;
         VAEncMiscParameterFrameRate    m_vaFrameRate;
-#ifndef MFX_VAAPI_UPSTREAM
         std::vector<VAEncQpBufferH264> m_mbqp_buffer;
-#endif
         std::vector<mfxU8>             m_mb_noskip_buffer;
     };
 

@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,6 +21,8 @@
 #include "umc_defs.h"
 #include "umc_media_data.h"
 #include "umc_defs.h"
+
+#include <algorithm>
 
 namespace UMC
 {
@@ -49,6 +51,7 @@ MediaData::MediaData(size_t length)
 } // MediaData::MediaData(size_t length) :
 
 MediaData::MediaData(const MediaData &another)
+    : m_AuxInfo(another.m_AuxInfo)
 {
     m_pBufferPointer   = NULL;
     m_pDataPointer     = NULL;
@@ -103,6 +106,7 @@ Status MediaData::Close(void)
 
     m_bMemoryAllocated = 0;
 
+    m_AuxInfo.clear();
     return UMC_OK;
 
 } // Status MediaData::Close(void)
@@ -138,6 +142,36 @@ Status MediaData::SetBufferPointer(uint8_t *ptr, size_t size)
     return UMC_OK;
 
 } // Status MediaData::SetBufferPointer(uint8_t *ptr, size_t size)
+
+void MediaData::SetAuxInfo(void* ptr, size_t size, int type)
+{
+     AuxInfo* aux = GetAuxInfo(type);
+     if (!aux)
+     {
+         m_AuxInfo.push_back(AuxInfo());
+         aux = &m_AuxInfo.back();
+     }
+
+     aux->ptr = ptr;
+     aux->size = size;
+     aux->type = type;
+} // void MediaData::SetAuxInfo(void* ptr, size_t size, int type)
+
+void MediaData::ClearAuxInfo(int type)
+{
+    AuxInfo aux = { 0, 0, type };
+    m_AuxInfo.remove(aux);
+} // void MediaData::ClearAuxInfo(int type)
+
+MediaData::AuxInfo const* MediaData::GetAuxInfo(int type) const
+{
+    AuxInfo aux = { 0, 0, type };
+    std::list<AuxInfo>::const_iterator
+        i = std::find(m_AuxInfo.begin(), m_AuxInfo.end(), aux);
+
+    return
+        i != m_AuxInfo.end() ? &(*i) : 0;
+} // MediaData::AuxInfo const* MediaData::GetAuxInfo(int type) const
 
 Status MediaData::SetTime(double start, double end)
 {

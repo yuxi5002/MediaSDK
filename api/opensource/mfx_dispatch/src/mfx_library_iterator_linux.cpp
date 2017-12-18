@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -37,26 +37,20 @@
 #define MFX_PCI_DIR "/sys/bus/pci/devices"
 #define MFX_PCI_DISPLAY_CONTROLLER_CLASS 0x03
 
-static const char mfx_storage_opt[] = "/opt/intel";
-
 #ifndef __APPLE__
 #if defined(LINUX64)
-    static const char mfx_folder[] = "mediasdk/lib64";
     static const char mfx_so_hw_base_name[] = "libmfxhw64-p.so";
     static const char mfx_so_sw_base_name[] = "libmfxsw64-p.so";
 #else
-    static const char mfx_folder[] = "mediasdk/lib32";
     static const char mfx_so_hw_base_name[] = "libmfxhw32-p.so";
     static const char mfx_so_sw_base_name[] = "libmfxsw32-p.so";
 #endif
 
 #else
 #if defined(X86_64)
-static const char mfx_folder[] = "mediasdk/lib64";
 static const char mfx_so_hw_base_name[] = "libmfxhw64.dylib";
 static const char mfx_so_sw_base_name[] = "libmfxsw64.dylib";
 #else
-static const char mfx_folder[] = "mediasdk/lib32";
 static const char mfx_so_hw_base_name[] = "libmfxhw32.dylib";
 static const char mfx_so_sw_base_name[] = "libmfxsw32.dylib";
 #endif
@@ -326,7 +320,7 @@ mfxStatus MFXLibraryIterator::Init(eMfxImplType implType, mfxIMPL impl, const mf
     m_implType = implType;
 
     snprintf(m_path, sizeof(m_path)/sizeof(m_path[0]),
-             "%s/%s", mfx_storage_opt, mfx_folder);
+             "%s", MFX_MODULES_DIR);
 
     m_libs_num = mfx_list_libraries(m_path, (MFX_LIB_HARDWARE == implType), &m_libs);
     

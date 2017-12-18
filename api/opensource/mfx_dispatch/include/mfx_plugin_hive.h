@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -31,16 +31,6 @@
 struct MFX_DISP_HANDLE;
 
 namespace MFX {
-
-    enum 
-    {
-        MAX_PLUGIN_PATH = 4096
-    };
-    
-    enum
-    {
-        MAX_PLUGIN_NAME = 4096
-    };
 
     inline bool operator == (const mfxPluginUID &lhs, const mfxPluginUID & rhs) 
     {
@@ -98,6 +88,7 @@ namespace MFX {
         MFXPluginsInHive(int mfxStorageID, const msdk_disp_char *msdkLibSubKey, mfxVersion currentAPIVersion);
     };
 
+#if !defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
     //plugins are loaded from FS close to executable
     class MFXPluginsInFS : public MFXPluginStorageBase
     {
@@ -109,7 +100,7 @@ namespace MFX {
         bool ParseFile(FILE * f, PluginDescriptionRecord & des);
         bool ParseKVPair( msdk_disp_char *key, msdk_disp_char * value, PluginDescriptionRecord & des);
     };
-
+#endif // !defined(MEDIASDK_UWP_LOADER) && !defined(MEDIASDK_UWP_PROCTABLE)
 
     //plugins are loaded from FS close to Runtime library
     class MFXDefaultPlugins : public MFXPluginStorageBase

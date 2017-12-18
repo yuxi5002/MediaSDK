@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -178,7 +178,6 @@ typedef struct {
         mfxU32    MVCostScalingFactor         : 3;
 
         mfxU32    reserved1        : 24;
-
         mfxU32    reserved2;
         mfxU32    reserved3;
 
@@ -321,6 +320,13 @@ typedef struct {
     mfxU16      reserved[8];
     mfxU8       DeltaQP[8];   /* list of delta QPs, only positive values */
 } mfxExtFeiRepackCtrl;
+
+/* FEI repack status */
+typedef struct {
+    mfxExtBuffer    Header;
+    mfxU32          NumPasses;
+    mfxU16          reserved[58];
+} mfxExtFeiRepackStat;
 
 /* 1 decode stream out */
 typedef struct {
@@ -489,7 +495,7 @@ typedef enum {
     MFX_FEI_FUNCTION_ENCODE     =2,
     MFX_FEI_FUNCTION_ENC        =3,
     MFX_FEI_FUNCTION_PAK        =4,
-    MFX_FEI_FUNCTION_DEC        =5
+    MFX_FEI_FUNCTION_DEC        =5,
 } mfxFeiFunction;
 
 enum {
@@ -510,7 +516,8 @@ enum {
     MFX_EXTBUFF_FEI_SLICE          = MFX_MAKEFOURCC('F','S','L','C'),
     MFX_EXTBUFF_FEI_CODING_OPTION  = MFX_MAKEFOURCC('F','C','D','O'),
     MFX_EXTBUFF_FEI_DEC_STREAM_OUT = MFX_MAKEFOURCC('F','D','S','O'),
-    MFX_EXTBUFF_FEI_REPACK_CTRL    = MFX_MAKEFOURCC('F','E','R','P')
+    MFX_EXTBUFF_FEI_REPACK_CTRL    = MFX_MAKEFOURCC('F','E','R','P'),
+    MFX_EXTBUFF_FEI_REPACK_STAT    = MFX_MAKEFOURCC('F','E','R','S')
 };
 
 /* should be attached to mfxVideoParam during initialization to indicate FEI function */
@@ -528,4 +535,3 @@ typedef struct {
 
 
 #endif
-

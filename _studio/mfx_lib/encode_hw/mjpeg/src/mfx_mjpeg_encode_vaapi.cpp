@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -203,17 +203,17 @@ mfxStatus VAAPIEncoder::QueryEncodeCaps(JpegEncCaps & caps)
     }
 
     memset(&caps, 0, sizeof(caps));
-    caps.Baseline = 1;
-    caps.Sequential = 1;
-    caps.Huffman = 1;
+    caps.Baseline         = 1;
+    caps.Sequential       = 1;
+    caps.Huffman          = 1;
 
-    caps.NonInterleaved = 0;
-    caps.Interleaved = 1;
+    caps.NonInterleaved   = 0;
+    caps.Interleaved      = 1;
 
-    caps.SampleBitDepth = 8;
-    caps.MaxNumComponent = 3;
-    caps.MaxNumScan = 1;
-    caps.MaxNumHuffTable = 2;
+    caps.SampleBitDepth   = 8;
+    caps.MaxNumComponent  = 3;
+    caps.MaxNumScan       = 1;
+    caps.MaxNumHuffTable  = 2;
     caps.MaxNumQuantTable = 2;
 
     VAStatus vaSts;
@@ -234,7 +234,6 @@ mfxStatus VAAPIEncoder::QueryEncodeCaps(JpegEncCaps & caps)
     }
     else
     {
-#ifndef MFX_VAAPI_UPSTREAM
         // Configuration
         VAConfigAttrib attrib;
 
@@ -251,10 +250,6 @@ mfxStatus VAAPIEncoder::QueryEncodeCaps(JpegEncCaps & caps)
                               VAEntrypointEncPicture,
                               &attrib, 1);
         caps.MaxPicHeight     = attrib.value;
-#else
-        caps.MaxPicWidth  = 4096;
-        caps.MaxPicHeight = 4096;
-#endif
     }
 
     return MFX_ERR_NONE;

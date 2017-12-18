@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -17,7 +17,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-#include "mfx_config.h"
+#include "mfx_common.h"
 #if defined(MFX_ENABLE_H265_VIDEO_ENCODE)
 
 #pragma once
@@ -162,6 +162,28 @@ mfxStatus SetSkipFrame(
         mfxU32 size;
     } ExtVASurface;
 
+    class CUQPMap
+    {
+    public:
+        mfxU32                            m_width;
+        mfxU32                            m_height;
+        mfxU32                            m_pitch;
+        mfxU32                            m_h_aligned;
+
+        mfxU32                            m_block_width;
+        mfxU32                            m_block_height;
+        std::vector<mfxI8>                m_buffer;
+
+        CUQPMap():
+            m_width(0),
+            m_height(0),
+            m_pitch(0),
+            m_h_aligned(0),
+            m_block_width(0),
+            m_block_height(0) {}
+
+            void Init(mfxU32 picWidthInLumaSamples, mfxU32 picHeightInLumaSamples);
+    };
     class VAAPIEncoder : public DriverEncoder, DDIHeaderPacker, protected VABuffersHandler
     {
     public:
@@ -266,11 +288,7 @@ mfxStatus SetSkipFrame(
         mfxU32 m_height;
         ENCODE_CAPS_HEVC m_caps;
 
-        std::vector<mfxI8>                m_cuqp_buffer;
-        mfxU32                            m_cuqp_width;
-        mfxU32                            m_cuqp_height;
-        mfxU32                            m_cuqp_pitch;
-        mfxU32                            m_cuqp_h_aligned;
+        CUQPMap    m_cuqpMap;
         std::vector<VAEncROI> m_arrayVAEncROI;
 
         static const mfxU32 MAX_CONFIG_BUFFERS_COUNT = 26 + 5;

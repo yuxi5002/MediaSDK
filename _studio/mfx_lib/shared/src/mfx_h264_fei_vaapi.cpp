@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -565,6 +565,7 @@ mfxStatus VAAPIFEIPREENCEncoder::Execute(
     mdprintf(stderr, "statParamsId=%d\n", statParamsId);
     configBuffers[buffersCount++] = statParamsId;
 
+
     assert(buffersCount <= configBuffers.size());
 
     //------------------------------------------------------------------
@@ -648,7 +649,7 @@ mfxStatus VAAPIFEIPREENCEncoder::QueryStatus(
 
     for (indxSurf = 0; indxSurf < m_statFeedbackCache.size(); indxSurf++)
     {
-        ExtVASurface currentFeedback = m_statFeedbackCache[indxSurf];
+        const ExtVASurface & currentFeedback = m_statFeedbackCache[indxSurf];
 
         if (currentFeedback.number == task.m_statusReportNumber[feiFieldId])
         {
@@ -711,7 +712,16 @@ mfxStatus VAAPIFEIPREENCEncoder::QueryStatus(
                             statMVid,
                             (void **) (&mvs));
                 }
-                MFX_CHECK_WITH_ASSERT(VA_STATUS_SUCCESS == vaSts, MFX_ERR_DEVICE_FAILED);
+
+                if(VA_STATUS_ERROR_ENCODING_ERROR == vaSts)
+                {
+                    sts = MFX_ERR_GPU_HANG;
+                    break;
+                }
+                else
+                {
+                    MFX_CHECK_WITH_ASSERT(VA_STATUS_SUCCESS == vaSts, MFX_ERR_DEVICE_FAILED);
+                }
 
                 FastCopyBufferVid2Sys(mvsOut->MB, mvs, 16 * sizeof (VAMotionVectorIntel) * mvsOut->NumMBAlloc);
 
@@ -733,7 +743,16 @@ mfxStatus VAAPIFEIPREENCEncoder::QueryStatus(
                             statOUTid,
                             (void **) (&mbstat));
                 }
-                MFX_CHECK_WITH_ASSERT(VA_STATUS_SUCCESS == vaSts, MFX_ERR_DEVICE_FAILED);
+
+                if(VA_STATUS_ERROR_ENCODING_ERROR == vaSts)
+                {
+                    sts = MFX_ERR_GPU_HANG;
+                    break;
+                }
+                else
+                {
+                    MFX_CHECK_WITH_ASSERT(VA_STATUS_SUCCESS == vaSts, MFX_ERR_DEVICE_FAILED);
+                }
 
                 FastCopyBufferVid2Sys(mbstatOut->MB, mbstat, sizeof (VAStatsStatistics16x16Intel) * mbstatOut->NumMBAlloc);
 
@@ -1565,7 +1584,7 @@ mfxStatus VAAPIFEIENCEncoder::QueryStatus(
 
     for (indxSurf = 0; indxSurf < m_statFeedbackCache.size(); indxSurf++)
     {
-        ExtVASurface currentFeedback = m_statFeedbackCache[indxSurf];
+        const ExtVASurface & currentFeedback = m_statFeedbackCache[indxSurf];
 
         if (currentFeedback.number == task.m_statusReportNumber[feiFieldId])
         {
@@ -2364,6 +2383,7 @@ mfxStatus VAAPIFEIPAKEncoder::Execute(
         mdprintf(stderr, "m_sliceBufferId[%zu]=%d\n", i, m_sliceBufferId[i]);
     }
 
+
     assert(buffersCount <= configBuffers.size());
 
 
@@ -2475,7 +2495,7 @@ mfxStatus VAAPIFEIPAKEncoder::QueryStatus(
 
     for (indxSurf = 0; indxSurf < m_statFeedbackCache.size(); ++indxSurf)
     {
-        ExtVASurface currentFeedback = m_statFeedbackCache[indxSurf];
+        const ExtVASurface & currentFeedback = m_statFeedbackCache[indxSurf];
 
         if (currentFeedback.number == task.m_statusReportNumber[feiFieldId])
         {
@@ -2518,18 +2538,33 @@ mfxStatus VAAPIFEIPAKEncoder::QueryStatus(
                 MFX_CHECK_WITH_ASSERT(VA_STATUS_SUCCESS == vaSts, MFX_ERR_DEVICE_FAILED);
             }
 
-            task.m_bsDataLength[feiFieldId] = codedBufferSegment->size;
+            if (codedBufferSegment->status & VA_CODED_BUF_STATUS_BAD_BITSTREAM)
+            {
+                sts = MFX_ERR_GPU_HANG;
+            }
+            else if (!codedBufferSegment->size || !codedBufferSegment->buf)
+            {
+                sts = MFX_ERR_DEVICE_FAILED;
+            }
+            else
+            {
+                task.m_bsDataLength[feiFieldId] = codedBufferSegment->size;
 
-            FastCopyBufferVid2Sys(task.m_bs->Data + task.m_bs->DataLength, codedBufferSegment->buf, codedBufferSegment->size);
+                FastCopyBufferVid2Sys(task.m_bs->Data + task.m_bs->DataLength,
+                                      codedBufferSegment->buf, codedBufferSegment->size);
 
-            task.m_bs->DataLength += codedBufferSegment->size;
-            //Update other fields in mfxBitstream
-            task.m_bs->TimeStamp = task.m_timeStamp;
-            task.m_bs->DecodeTimeStamp = CalcDTSFromPTS(m_videoParam.mfx.FrameInfo, mfxU16(task.m_dpbOutputDelay), task.m_timeStamp);
-            task.m_bs->PicStruct = task.GetPicStructForDisplay();
-            task.m_bs->FrameType = task.m_type[task.GetFirstField()] & ~MFX_FRAMETYPE_KEYPIC;
-            if (task.m_fieldPicFlag)
-                task.m_bs->FrameType = mfxU16(task.m_bs->FrameType | ((task.m_type[!task.GetFirstField()]& ~MFX_FRAMETYPE_KEYPIC) << 8));
+                task.m_bs->DataLength += codedBufferSegment->size;
+                //Update other fields in mfxBitstream
+                task.m_bs->TimeStamp = task.m_timeStamp;
+                task.m_bs->DecodeTimeStamp = CalcDTSFromPTS(m_videoParam.mfx.FrameInfo,
+                                             mfxU16(task.m_dpbOutputDelay), task.m_timeStamp);
+                task.m_bs->PicStruct = task.GetPicStructForDisplay();
+                task.m_bs->FrameType = task.m_type[task.GetFirstField()] & ~MFX_FRAMETYPE_KEYPIC;
+                if (task.m_fieldPicFlag)
+                    task.m_bs->FrameType = mfxU16(task.m_bs->FrameType |
+                    ((task.m_type[!task.GetFirstField()]& ~MFX_FRAMETYPE_KEYPIC) << 8));
+                sts = MFX_ERR_NONE;
+            }
 
             {
                 MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_EXTCALL, "vaUnmapBuffer");
@@ -2541,7 +2576,6 @@ mfxStatus VAAPIFEIPAKEncoder::QueryStatus(
             // remove task
             m_statFeedbackCache.erase(m_statFeedbackCache.begin() + indxSurf);
         }
-            sts = MFX_ERR_NONE;
             break;
         case VASurfaceRendering:
         case VASurfaceDisplaying:

@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -232,7 +232,11 @@ LinuxVideoAccelerator::LinuxVideoAccelerator(void)
 
     vm_mutex_set_invalid(&m_SyncMutex);
 
+#if defined(ANDROID)
+    m_isUseStatuReport  = false;
+#else
     m_isUseStatuReport  = true;
+#endif
 
     m_bH264MVCSupport   = false;
     memset(&m_guidDecoder, 0 , sizeof(GUID));
@@ -306,9 +310,11 @@ Status LinuxVideoAccelerator::Init(VideoAcceleratorParams* pInfo)
                                   && ((m_Profile & VA_CODEC) != UMC::VA_H265)
                                   && ((m_Profile & VA_CODEC) != UMC::VA_VP8)
                                   && ((m_Profile & VA_CODEC) != UMC::VA_VP9)
+#ifndef ANDROID
                                   && ((m_Profile & VA_CODEC) != UMC::VA_MPEG2)
                                   && ((m_Profile & VA_CODEC) != UMC::VA_JPEG)
                                   && ((m_Profile & VA_CODEC) != UMC::VA_VC1)
+#endif
                                     );
 
     SetTraceStrings(m_Profile & VA_CODEC);
@@ -408,9 +414,7 @@ Status LinuxVideoAccelerator::Init(VideoAcceleratorParams* pInfo)
             va_attributes[nattr].value = VA_DEC_SLICE_MODE_NORMAL;
             nattr++;
 
-#ifndef MFX_VAAPI_UPSTREAM
             va_attributes[nattr++].type = (VAConfigAttribType)VAConfigAttribDecProcessing;
-#endif
 
             va_attributes[nattr++].type = VAConfigAttribEncryption;
 
@@ -431,14 +435,10 @@ Status LinuxVideoAccelerator::Init(VideoAcceleratorParams* pInfo)
 
         if (UMC_OK == umcRes && pParams->m_needVideoProcessingVA)
         {
-#ifndef MFX_VAAPI_UPSTREAM
             if (va_attributes[2].value == VA_DEC_PROCESSING_NONE)
                 umcRes = UMC_ERR_FAILED;
             else
                 attribsNumber++;
-#else
-            umcRes = UMC_ERR_FAILED;
-#endif
         }
 
 
@@ -654,10 +654,8 @@ VACompBuffer* LinuxVideoAccelerator::GetCompBufferHW(int32_t type, int32_t size,
             case UMC::VA_H264:
                 if (m_bH264ShortSlice)
                 {
-#ifndef MFX_VAAPI_UPSTREAM
                     va_size         = sizeof(VASliceParameterBufferH264Base);
                     va_num_elements = size/sizeof(VASliceParameterBufferH264Base);
-#endif
                 }
                 else
                 {
@@ -813,6 +811,7 @@ uint16_t LinuxVideoAccelerator::GetDecodingError()
     MFX_AUTO_LTRACE(MFX_TRACE_LEVEL_EXTCALL, "GetDecodingError");
     uint16_t error = 0;
 
+#ifndef ANDROID
     // NOTE: at the moment there is no such support for Android, so no need to execute...
     VAStatus va_sts;
 
@@ -843,6 +842,7 @@ uint16_t LinuxVideoAccelerator::GetDecodingError()
             }
         }
     }
+#endif
     return error;
 }
 

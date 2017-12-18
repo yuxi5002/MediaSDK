@@ -1,15 +1,15 @@
 # Copyright (c) 2017 Intel Corporation
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -103,8 +103,14 @@ function( get_folder folder )
 endfunction()
 
 function( get_mfx_version mfx_version_major mfx_version_minor )
-  file(STRINGS $ENV{MFX_HOME}/api/include/mfxvideo.h major REGEX "#define MFX_VERSION_MAJOR")
-  file(STRINGS $ENV{MFX_HOME}/api/include/mfxvideo.h minor REGEX "#define MFX_VERSION_MINOR")
+  file(STRINGS $ENV{MFX_HOME}/api/include/mfxdefs.h major REGEX "#define MFX_VERSION_MAJOR")
+  if(major STREQUAL "") # old style version
+     file(STRINGS $ENV{MFX_HOME}/api/include/mfxvideo.h major REGEX "#define MFX_VERSION_MAJOR")
+  endif()
+  file(STRINGS $ENV{MFX_HOME}/api/include/mfxdefs.h minor REGEX "#define MFX_VERSION_MINOR")
+  if(minor STREQUAL "") # old style version
+     file(STRINGS $ENV{MFX_HOME}/api/include/mfxvideo.h minor REGEX "#define MFX_VERSION_MINOR")
+  endif()
   string(REPLACE "#define MFX_VERSION_MAJOR " "" major ${major})
   string(REPLACE "#define MFX_VERSION_MINOR " "" minor ${minor})
   set(${mfx_version_major} ${major} PARENT_SCOPE)
@@ -345,25 +351,9 @@ function( set_file_and_product_version input_version version_defs )
       )
     string( SUBSTRING ${input_version} 0 1 ver )
 
-    set( version_defs " -DMFX_PLUGIN_FILE_VERSION=\"\\\"${ver}${cur_date}\"\\\"" )
-
-    set( git_commit "" )
-    git_describe( git_commit )
-
-    set( version_defs " -DMFX_PLUGIN_FILE_VERSION=\"\\\"${ver}${cur_date}${git_commit}\"\\\""
+    set( version_defs " -DMFX_PLUGIN_FILE_VERSION=\"\\\"${ver}${cur_date}\"\\\""
                   " -DMFX_PLUGIN_PRODUCT_VERSION=\"\\\"${input_version}\"\\\""
                   PARENT_SCOPE )
-  endif()
-endfunction()
-
-function( git_describe git_commit )
-  execute_process(
-    COMMAND git describe --all --dirty
-    OUTPUT_VARIABLE git_commit
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  if( NOT ${git_commit} MATCHES "^$" )
-    set( git_commit ".${git_commit}" PARENT_SCOPE )
   endif()
 endfunction()
 

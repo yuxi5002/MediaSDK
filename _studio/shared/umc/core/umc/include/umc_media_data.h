@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,6 +23,8 @@
 
 #include "umc_structures.h"
 #include "umc_dynamic_cast.h"
+
+#include <list>
 
 namespace UMC
 {
@@ -38,6 +40,16 @@ public:
         FLAG_VIDEO_DATA_NOT_FULL_FRAME = 1,
         FLAG_VIDEO_DATA_NOT_FULL_UNIT  = 2,
         FLAG_VIDEO_DATA_END_OF_STREAM  = 4
+    };
+
+    struct AuxInfo
+    {
+        void*  ptr;
+        size_t size;
+        int    type;
+
+        bool operator==(AuxInfo const& i) const
+        { return type == i.type; }
     };
 
     // Default constructor
@@ -90,6 +102,17 @@ public:
     //  Set time stamp of media data block;
     virtual Status SetTime(double start, double end = 0);
 
+    void SetAuxInfo(void* ptr, size_t size, int type);
+    void ClearAuxInfo(int type);
+
+    AuxInfo* GetAuxInfo(int type)
+    {
+        return
+            const_cast<AuxInfo*>(const_cast<MediaData const*>(this)->GetAuxInfo(type)) ;
+    }
+
+    AuxInfo const* GetAuxInfo(int type) const;
+
     // Set frame type
     inline Status SetFrameType(FrameType ft);
     // Get frame type
@@ -131,6 +154,7 @@ protected:
     // On count of this, we use type uint32_t.
     uint32_t m_bMemoryAllocated; // (uint32_t) is memory owned by object
 
+    std::list<AuxInfo> m_AuxInfo;
 };
 
 

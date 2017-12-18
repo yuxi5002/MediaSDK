@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -257,11 +257,13 @@ namespace MfxHwVideoProcessing
                ,bBackgroundRequired(true)
                ,iBackgroundColor(0)
                ,iTilesNum4Comp(0)
+               ,execIdx(0xffffffff)//NO_INDEX
                ,statusReportID(0)
                ,bFieldWeaving(false)
                ,iFieldProcessingMode(0)
                ,rotation(0)
                ,scalingMode(MFX_SCALING_MODE_DEFAULT)
+               ,chromaSiting(MFX_CHROMA_SITING_UNKNOWN)
                ,bEOS(false)
                ,mirroring(0)
                ,mirroringPosition(0)
@@ -327,6 +329,7 @@ namespace MfxHwVideoProcessing
         bool           bBackgroundRequired;
         mfxU64         iBackgroundColor;
         mfxU32         iTilesNum4Comp;
+        mfxU32         execIdx; //index call of execute for current frame, actual for composition
 
         mfxU32         statusReportID;
 

@@ -664,6 +664,10 @@ bool CheckVersion(mfxVersion* version, msdkAPIFeature feature);
 
 void ConfigureAspectRatioConversion(mfxInfoVPP* pVppInfo);
 
+void SEICalcSizeType(std::vector<mfxU8>& data, mfxU16 type, mfxU32 size);
+
+mfxU8 Char2Hex(msdk_char ch);
+
 enum MsdkTraceLevel {
     MSDK_TRACE_LEVEL_SILENT = -1,
     MSDK_TRACE_LEVEL_CRITICAL = 0,
@@ -708,6 +712,11 @@ mfxI32 getMonitorType(msdk_char* str);
 void WaitForDeviceToBecomeFree(MFXVideoSession& session, mfxSyncPoint& syncPoint,mfxStatus& currentStatus);
 
 mfxU16 FourCCToChroma(mfxU32 fourCC);
+
+template<class T> inline T align(const T & value, const T & alignment)
+{
+    return alignment * (value / alignment + (value % alignment ? 1 : 0));
+}
 
 // class is used as custom exception
 class mfxError

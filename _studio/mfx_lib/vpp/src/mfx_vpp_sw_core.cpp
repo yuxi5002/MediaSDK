@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -387,7 +387,7 @@ mfxStatus VideoVPPBase::QueryIOSurf(VideoCORE* core, mfxVideoParam *par, mfxFram
 
     mfxU16 framesCountMin[2];
     mfxU16 framesCountSuggested[2];
-    mfxSts = GetExternalFramesCount(par, &pipelineList[0], (mfxU32)pipelineList.size(), framesCountMin, framesCountSuggested);
+    mfxSts = GetExternalFramesCount(core, par, &pipelineList[0], (mfxU32)pipelineList.size(), framesCountMin, framesCountSuggested);
     MFX_CHECK_STS( mfxSts );
 
     request[VPP_IN].NumFrameMin  = framesCountMin[VPP_IN];
@@ -496,6 +496,7 @@ mfxStatus VideoVPPBase::GetVideoParam(mfxVideoParam *par)
                     case MFX_EXTBUFF_VPP_DI_30i60p:
                     case MFX_EXTBUFF_VPP_VIDEO_SIGNAL_INFO:
                     case MFX_EXTBUFF_VPP_MIRRORING:
+                    case MFX_EXTBUFF_VPP_COLOR_CONVERSION:
                     {
                         if(numUsedFilters + 1 > pVPPHint->NumAlg)
                             return MFX_ERR_UNDEFINED_BEHAVIOR;

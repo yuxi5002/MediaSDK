@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -310,8 +310,13 @@ VAAPIVideoCORE::VAAPIVideoCORE(
           , m_adapterNum(adapterNum)
           , m_bUseExtAllocForHWFrames(false)
           , m_HWType(MFX_HW_IVB)
+#if !defined(ANDROID)
           , m_bCmCopy(false)
           , m_bCmCopyAllowed(true)
+#else
+          , m_bCmCopy(false)
+          , m_bCmCopyAllowed(false)
+#endif
 {
 } // VAAPIVideoCORE::VAAPIVideoCORE(...)
 
@@ -344,7 +349,7 @@ VAAPIVideoCORE::GetHandle(
     MFX_CHECK_NULL_PTR1(handle);
     UMC::AutomaticUMCMutex guard(m_guard);
 
-        return CommonCORE::GetHandle(type, handle);
+    return CommonCORE::GetHandle(type, handle);
 
 } // mfxStatus VAAPIVideoCORE::GetHandle(mfxHandleType type, mfxHDL *handle)
 
@@ -605,9 +610,13 @@ VAAPIVideoCORE::CreateVA(
     }
 
     bool init_render_targets =
+#if defined(ANDROID)
+        true
+#else
         param->mfx.CodecId != MFX_CODEC_MPEG2 &&
         param->mfx.CodecId != MFX_CODEC_AVC   &&
         param->mfx.CodecId != MFX_CODEC_HEVC
+#endif
         ;
 
     VASurfaceID* RenderTargets = NULL;
@@ -631,6 +640,9 @@ VAAPIVideoCORE::CreateVA(
         }
     }
 
+    if(GetExtBuffer(param->ExtParam, param->NumExtParam, MFX_EXTBUFF_DEC_ADAPTIVE_PLAYBACK))
+        m_KeepVAState = true;
+    else
         m_KeepVAState = false;
 
     sts = CreateVideoAccelerator(param, profile, response->NumFrameActual, RenderTargets, allocator);
@@ -659,6 +671,10 @@ VAAPIVideoCORE::ProcessRenderTargets(
     mfxFrameAllocResponse* response,
     mfxBaseWideFrameAllocator* pAlloc)
 {
+#if defined(ANDROID)
+    if (response->NumFrameActual > 128)
+        return MFX_ERR_UNSUPPORTED;
+#endif
 
     RegisterMids(response, request->Type, !m_bUseExtAllocForHWFrames, pAlloc);
     m_pcHWAlloc.pop();
@@ -1052,7 +1068,7 @@ VAAPIVideoCORE::DoFastCopyExtended(
                     mfxMemId saveMemId = pSrc->Data.MemId;
                     pSrc->Data.MemId = 0;
 
-                    sts = CommonCORE::DoSWFastCopy(pDst, pSrc, COPY_VIDEO_TO_SYS); // sw copy
+                    sts = CoreDoSWFastCopy(pDst, pSrc, COPY_VIDEO_TO_SYS); // sw copy
                     MFX_CHECK_STS(sts);
 
                     pSrc->Data.MemId = saveMemId;
@@ -1084,7 +1100,7 @@ VAAPIVideoCORE::DoFastCopyExtended(
         MFX_CHECK(dstPitch < 0x8000 || pDst->Info.FourCC == MFX_FOURCC_RGB4 || pDst->Info.FourCC == MFX_FOURCC_YUY2, MFX_ERR_UNDEFINED_BEHAVIOR);
         MFX_CHECK(srcPitch < 0x8000 || pSrc->Info.FourCC == MFX_FOURCC_RGB4 || pSrc->Info.FourCC == MFX_FOURCC_YUY2, MFX_ERR_UNDEFINED_BEHAVIOR);
 
-        sts = CommonCORE::DoSWFastCopy(pDst, pSrc, COPY_SYS_TO_SYS); // sw copy
+        sts = CoreDoSWFastCopy(pDst, pSrc, COPY_SYS_TO_SYS); // sw copy
         MFX_CHECK_STS(sts);
     }
     else if (NULL != pSrc->Data.Y && NULL != pDst->Data.MemId)
@@ -1128,7 +1144,7 @@ VAAPIVideoCORE::DoFastCopyExtended(
                 mfxMemId saveMemId = pDst->Data.MemId;
                 pDst->Data.MemId = 0;
 
-                sts = CommonCORE::DoSWFastCopy(pDst, pSrc, COPY_SYS_TO_VIDEO); // sw copy
+                sts = CoreDoSWFastCopy(pDst, pSrc, COPY_SYS_TO_VIDEO); // sw copy
                 MFX_CHECK_STS(sts);
 
                 pDst->Data.MemId = saveMemId;

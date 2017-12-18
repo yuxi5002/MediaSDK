@@ -166,6 +166,15 @@ struct setElem
                 }
                 break;
 
+                case MFX_EXTBUFF_FEI_REPACK_STAT:
+                {
+                    mfxExtFeiRepackStat* feiRepackStat = reinterpret_cast<mfxExtFeiRepackStat*>
+                                                         (buffers[i]);
+                    MSDK_SAFE_DELETE_ARRAY(feiRepackStat);
+                    i += num_of_fields;
+                }
+                break;
+
                 case MFX_EXTBUFF_FEI_PREENC_MV_PRED:
                 {
                     mfxExtFeiPreEncMVPredictors* mvPreds = reinterpret_cast<mfxExtFeiPreEncMVPredictors*>(buffers[i]);

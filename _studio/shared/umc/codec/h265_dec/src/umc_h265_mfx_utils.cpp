@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -90,6 +90,9 @@ bool CheckGUID(VideoCORE * core, eMFXHWType type, mfxVideoParam const* param)
     {
         case MFX_PROFILE_HEVC_MAIN:
         case MFX_PROFILE_HEVC_MAINSP:
+#if defined(ANDROID)
+        case MFX_PROFILE_HEVC_MAIN10:
+#endif
             return true;
     }
 
@@ -146,19 +149,28 @@ bool CheckChromaFormat(mfxU16 profile, mfxU16 format)
     if (format > MFX_CHROMAFORMAT_YUV444)
         return false;
 
-    static const mfxU16 minmax[][2] =
+    struct supported_t
     {
-        {                       0,                       0 }, //MFX_PROFILE_UNKNOWN is not allowed, just placeholder here
-        { MFX_CHROMAFORMAT_YUV420, MFX_CHROMAFORMAT_YUV420 }, //MFX_PROFILE_HEVC_MAIN
-        { MFX_CHROMAFORMAT_YUV420, MFX_CHROMAFORMAT_YUV420 }, //MFX_PROFILE_HEVC_MAIN10
-        { MFX_CHROMAFORMAT_YUV420, MFX_CHROMAFORMAT_YUV420 }, //MFX_PROFILE_HEVC_MAINSP
-        { MFX_CHROMAFORMAT_YUV444 + 1, MFX_CHROMAFORMAT_YUV444 + 1 }, //MFX_PROFILE_HEVC_REXT - unsupported
+        mfxU16 profile;
+        mfxI8  chroma[4];
+    } static const supported[] =
+    {
+        { MFX_PROFILE_HEVC_MAIN,   {                      -1, MFX_CHROMAFORMAT_YUV420,                      -1,                      -1 } },
+        { MFX_PROFILE_HEVC_MAIN10, {                      -1, MFX_CHROMAFORMAT_YUV420,                      -1,                      -1 } },
+        { MFX_PROFILE_HEVC_MAINSP, {                      -1, MFX_CHROMAFORMAT_YUV420,                      -1,                      -1 } },
+
+
     };
 
+    supported_t const
+        *f = supported,
+        *l = f + sizeof(supported) / sizeof(supported[0]);
+    for (; f != l; ++f)
+        if (f->profile == profile)
+            break;
+
     return
-        !(format < minmax[profile][0]) &&
-        !(format > minmax[profile][1])
-        ;
+        f != l && (*f).chroma[format] != -1;
 }
 
 inline
@@ -450,6 +462,8 @@ UMC::Status HeadersAnalyzer::DecodeHeader(UMC::MediaData * data, mfxBitstream *b
         {
             first_sps = m_supplier->GetHeaders()->m_SeqParams.GetCurrentHeader();
             VM_ASSERT(first_sps && "Current SPS should be valid when [m_isSPSFound]");
+
+            MFX_CHECK_NULL_PTR1(first_sps);
 
             first_sps->IncrementReference();
             sps_guard.Reset(first_sps);

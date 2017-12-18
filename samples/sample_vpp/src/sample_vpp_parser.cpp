@@ -1214,20 +1214,13 @@ mfxStatus vppParseInputString(msdk_char* strInput[], mfxU8 nArgNum, sInputParams
             {
                 VAL_CHECK(1 + i == nArgNum);
                 i++;
-                pParams->fccSource = Str2FourCC(strInput[i]);
-                // I420 and YV12 inputs are automatically converted into NV12 in file reader
-                if (pParams->fccSource == MFX_FOURCC_I420 || pParams->fccSource == MFX_FOURCC_YV12)
-                {
-                    pParams->frameInfoIn[0].FourCC = MFX_FOURCC_NV12;
-                }
-                else
-                {
-                    pParams->frameInfoIn[0].FourCC = Str2FourCC(strInput[i]);
-                }
-                if (MFX_FOURCC_I420 == pParams->frameInfoIn[0].FourCC)
-                {
-                    pParams->frameInfoIn[0].FourCC = MFX_FOURCC_YV12; // I420 input is implemented using YV12 internally
-                }
+                pParams->fccSource = pParams->frameInfoIn[0].FourCC
+                    = Str2FourCC(strInput[i]);
+
+                //if (MFX_FOURCC_I420 == pParams->frameInfoIn[0].FourCC)
+                //{
+                //    pParams->frameInfoIn[0].FourCC = MFX_FOURCC_YV12; // I420 input is implemented using YV12 internally
+                //}
 
             }
             else if (0 == msdk_strcmp(strInput[i], MSDK_STRING("-dcc")))
@@ -1489,6 +1482,18 @@ bool CheckInputParams(msdk_char* strInput[], sInputParams* pParams )
         if (pParams->rotate[i] != 0 && pParams->rotate[i] != 90 && pParams->rotate[i] != 180 && pParams->rotate[i] != 270)
         {
             vppPrintHelp(strInput[0], MSDK_STRING("Invalid -rotate parameter: supported values 0, 90, 180, 270\n"));
+            return false;
+        }
+    }
+
+    for (mfxU32 i = 0; i < pParams->numStreams; i++)
+    {
+        const mfxVPPCompInputStream& is = pParams->compositionParam.streamInfo[i].compStream;
+
+        if ((pParams->outFrameInfo.nWidth < is.DstW + is.DstX) ||
+            (pParams->outFrameInfo.nHeight < is.DstH + is.DstY))
+        {
+            vppPrintHelp(strInput[0], MSDK_STRING("One of composing frames cannot fit into destination frame.\n"));
             return false;
         }
     }

@@ -1,15 +1,15 @@
 // Copyright (c) 2017 Intel Corporation
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,9 +24,22 @@
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 
-#if !defined( WIN_TRESHOLD_MOBILE )
-#define MFX_D3D9_ENABLED
-#endif // !defined( WIN_TRESHOLD_MOBILE )
+#define TOSTRING(L) #L
+#define STRINGIFY(L) TOSTRING(L)
+
+#if defined(MEDIASDK_UWP_LOADER) || defined(MEDIASDK_UWP_PROCTABLE)
+    #if defined(MFX_D3D9_ENABLED) && !defined(MFX_FORCE_D3D9_ENABLED)
+        #undef MFX_D3D9_ENABLED
+        // if you really like to use D3D9 from intel_gfx_api-x64/x86.dll, use MFX_FORCE_D3D9_ENABLED
+        #pragma message("\n\nATTENTION:\nin file\n\t" __FILE__ " (" STRINGIFY(__LINE__) "):\nUsing of D3D9 disabled for UWP!\n\n")
+    #endif
+    #if defined(MFX_FORCE_D3D9_ENABLED)
+        #define MFX_D3D9_ENABLED
+    #endif
+#else
+    #define MFX_D3D9_ENABLED
+    #pragma message("\n\nATTENTION:\nin file\n\t" __FILE__ " (" STRINGIFY(__LINE__) "):\nUsing of D3D9 enabled!\n\n")
+#endif
 
 #endif // #if defined(_WIN32) || defined(_WIN64)
 
@@ -38,7 +51,7 @@
 #define DXVA2DEVICE_TRACE_OPERATION(expr) expr;
 #else
 #define DXVA2DEVICE_TRACE(expr)
-#define DXVA2DEVICE_TRACE_OPERATION(expr) 
+#define DXVA2DEVICE_TRACE_OPERATION(expr)
 #endif
 
 namespace MFX
