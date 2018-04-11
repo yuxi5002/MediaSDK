@@ -50,14 +50,14 @@ void* g_hModule = NULL; // DLL handle received in DllMain
 #if defined(mfxhw64_EXPORTS) || defined(mfxhw32_EXPORTS) || defined(mfxsw64_EXPORTS) || defined(mfxsw32_EXPORTS)
 
 #if defined(LINUX_TARGET_PLATFORM_BDW)
-const char* g_MfxProductName = "mediasdk_product_name: Intel(R) Media SDK";
+const char* g_MfxProductName = "mediasdk_product_name: Intel(R) Media SDK for CV";
 #elif defined(LINUX_TARGET_PLATFORM_BXT) || defined (LINUX_TARGET_PLATFORM_BXTMIN)
 const char* g_MfxProductName = "mediasdk_product_name: Intel(R) Media SDK 2017 for Embedded Linux";
 #else
-const char* g_MfxProductName = "mediasdk_product_name: Intel(R) Media Server Studio - SDK for Linux*";
+const char* g_MfxProductName = "mediasdk_product_name: Intel(R) Media SDK";
 #endif
 
-const char* g_MfxCopyright = "mediasdk_copyright: Copyright(c) 2017 Intel Corporation";
+const char* g_MfxCopyright = "mediasdk_copyright: Copyright(c) 2018 Intel Corporation";
 const char* g_MfxFileVersion = "mediasdk_file_version: " MFX_FILE_VERSION;
 const char* g_MfxProductVersion = "mediasdk_product_version: " MFX_PRODUCT_VERSION;
 
