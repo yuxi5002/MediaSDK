@@ -1397,8 +1397,9 @@ mfxStatus CoreDoSWFastCopy(mfxFrameSurface1 *pDst, mfxFrameSurface1 *pSrc, int c
             ptrDst = pDst->Data.G;
             sts = FastCopy::Copy(ptrDst, dstPitch, ptrSrc, srcPitch, roi, copyFlag);
             MFX_CHECK_STS(sts);
-            ptrSrc = pSrc->Data.B;
-            ptrDst = pDst->Data.B;
+
+            ptrSrc = pSrc->Data.R;
+            ptrDst = pDst->Data.R;
             sts = FastCopy::Copy(ptrDst, dstPitch, ptrSrc, srcPitch, roi, copyFlag);
             MFX_CHECK_STS(sts);
 
