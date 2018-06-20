@@ -103,6 +103,7 @@ enum {
 #if (MFX_VERSION >= MFX_VERSION_NEXT)
     MFX_FOURCC_P016         = MFX_MAKEFOURCC('P','0','1','6'),
 #endif
+    MFX_FOURCC_RGBP         = MFX_MAKEFOURCC('R','G','B','P'),
     MFX_FOURCC_P210         = MFX_MAKEFOURCC('P','2','1','0'),
     MFX_FOURCC_BGR4         = MFX_MAKEFOURCC('B','G','R','4'),   /* ABGR in that order, A channel is 8 MSBs */
     MFX_FOURCC_A2RGB10      = MFX_MAKEFOURCC('R','G','1','0'),   /* ARGB in that order, A channel is two MSBs */

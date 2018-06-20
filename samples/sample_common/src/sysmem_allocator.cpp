@@ -18,7 +18,6 @@ or https://software.intel.com/en-us/media-client-solutions-support.
 \**********************************************************************************/
 
 #include "sysmem_allocator.h"
-#include "sample_utils.h"
 
 #define MSDK_ALIGN32(X) (((mfxU32)((X)+31)) & (~ (mfxU32)31))
 #define ID_BUFFER MFX_MAKEFOURCC('B','U','F','F')
