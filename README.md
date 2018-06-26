@@ -65,10 +65,47 @@ Media SDK test and sample applications may require additional software packages 
 
 ## Build steps
 
+*This build documentation was tested under Ubuntu Server 18.04 with gcc-7.3.0 and gcc-8.1.0 but it should work on another OS distributions with various versions of gcc.*
+
 Get sources with the following Git* command (pay attention that to get full Media SDK sources bundle it is required to have Git* with [LFS](https://git-lfs.github.com/) support):
 ```sh
 git clone https://github.com/Intel-Media-SDK/MediaSDK msdk
 cd msdk
+```
+
+Install all required packages:
+```sh
+sudo apt-get install cmake pkg-config
+```
+
+Build and install LibVA and its dependencies:
+```sh
+sudo apt-get install meson libdrm-dev automake
+
+git clone https://github.com/intel/libva.git
+git checkout b3be72a5a110880f70626d7c3bed953cdde124b2 #recommended working version for MediaSDK
+cd libva
+meson build
+ninja -C build
+
+#To install it on your system
+cd build
+sudo ninja install
+```
+
+*[Optional]* And finally build and install:
+```sh
+#For Ubuntu 18.04 do:
+#Packages needed for test_monitor
+sudo apt-get install googletest libgtest-dev libgtest-dev libpciaccess0 libpciaccess-dev
+#gtest gtest-devel libpciaccess libpciaccess-devel
+
+#Packages needed for rotate_opencl plugin
+sudo apt-get install opencl-headers ocl-icd-dev #???
+#ocl-icd ocl-icd-devel
+
+#Download package from https://github.com/intel/compute-runtime/releases/tag/18.24.10921
+dpkg -i intel-opencl_18.24.10921_amd64.deb ###?
 ```
 
 To configure and build Media SDK install cmake version 2.8.5 or later and run the following commands:
@@ -78,6 +115,13 @@ cmake ..
 make
 make install
 ```
+
+*[Optional]* Test compiled binaries by starting of cmoke tests:
+```sh
+...
+```
+
+
 Media SDK depends on a number of packages which are identified and checked for the proper version during configuration stage. Please, make sure to install these packages to satisfy Media SDK requirements. After successful configuration 'make' will build Media SDK binaries and samples. The following cmake configuration options can be used to customize the build:
 
 | Option | Values | Description |
