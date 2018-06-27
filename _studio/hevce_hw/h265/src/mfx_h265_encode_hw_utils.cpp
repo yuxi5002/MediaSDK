@@ -194,6 +194,7 @@ template<class T> mfxU32 MinL1(
     bool flush)
 {
     if ( !bField) return 1;
+	if (!flush) return 2;
 
     T top = begin;
     mfxU32 numNonB = 0;
@@ -204,10 +205,7 @@ template<class T> mfxU32 MinL1(
         numNonB++;
         top++;
     }
-    if (numNonB >= 2 || numNonB == 0) return 2;
-    if (top == end && flush)  return 1;
-    return 2;
-
+    return ((numNonB == 0) ? 1:2);
 }
 template<class T> T Reorder(
     MfxVideoParam const & par,
